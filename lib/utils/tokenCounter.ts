@@ -9,6 +9,11 @@ const CHARS_PER_TOKEN = 4;
 export const MAX_TOKENS = 3000;
 export const MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN;
 
+// Budgets per source type
+export const MAX_TOKENS_SOCIAL = 1500;
+export const MAX_TOKENS_BLOG = 2500;
+export const MAX_TOKENS_YOUTUBE = 4000;
+
 export interface TokenEstimate {
   tokens: number;
   characters: number;
@@ -32,8 +37,11 @@ export function estimateTokensWithInfo(text: string): TokenEstimate {
   };
 }
 
-export function truncateToMaxTokens(text: string, maxTokens: number = MAX_TOKENS): string {
-  if (!text) return '';
+export function truncateToMaxTokens(
+  text: string,
+  maxTokens: number = MAX_TOKENS
+): string {
+  if (!text) return "";
 
   const maxChars = maxTokens * CHARS_PER_TOKEN;
 
@@ -43,7 +51,7 @@ export function truncateToMaxTokens(text: string, maxTokens: number = MAX_TOKENS
 
   // Truncate at word boundary to avoid cutting words
   let truncated = text.substring(0, maxChars);
-  const lastSpaceIndex = truncated.lastIndexOf(' ');
+  const lastSpaceIndex = truncated.lastIndexOf(" ");
 
   if (lastSpaceIndex > maxChars * 0.9) {
     truncated = truncated.substring(0, lastSpaceIndex);
@@ -52,10 +60,16 @@ export function truncateToMaxTokens(text: string, maxTokens: number = MAX_TOKENS
   return truncated;
 }
 
-export function canFitInContext(text: string, maxTokens: number = MAX_TOKENS): boolean {
+export function canFitInContext(
+  text: string,
+  maxTokens: number = MAX_TOKENS
+): boolean {
   return estimateTokens(text) <= maxTokens;
 }
 
-export function getTokenBudget(usedTokens: number, maxTokens: number = MAX_TOKENS): number {
+export function getTokenBudget(
+  usedTokens: number,
+  maxTokens: number = MAX_TOKENS
+): number {
   return Math.max(0, maxTokens - usedTokens);
 }

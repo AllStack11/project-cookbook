@@ -27,7 +27,12 @@ export interface Recipe {
   instructions: Instruction[];
   notes?: string[];
   sourceUrl?: string;
+  imageUrl?: string;
   nutrition?: Nutrition;
+  // Fallback metadata
+  isGenerated?: boolean;
+  isPartialFallback?: boolean;
+  fallbackFields?: string[];
 }
 
 export interface ExtractionResult {
@@ -39,6 +44,7 @@ export interface ExtractionResult {
     modelUsed: string;
     tokensUsed?: number;
     processingTime: number;
+    isFallback?: boolean;
   };
 }
 
@@ -50,11 +56,15 @@ export interface ValidationError {
 export interface RecipeValidationResult {
   isValid: boolean;
   errors: ValidationError[];
+  // Specific flags for fallback logic
+  missingIngredients?: boolean;
+  missingInstructions?: boolean;
+  missingTitle?: boolean;
 }
 
 export enum SourceType {
-  YOUTUBE = 'youtube',
-  BLOG = 'blog',
-  SOCIAL_MEDIA = 'social',
-  TEXT = 'text',
+  YOUTUBE = "youtube",
+  BLOG = "blog",
+  SOCIAL_MEDIA = "social",
+  TEXT = "text",
 }

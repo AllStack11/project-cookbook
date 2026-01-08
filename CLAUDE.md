@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Recipe Extractor** is a Next.js web application that extracts clean, structured recipes from various sources (YouTube videos, blog posts, social media) using LLM-powered content parsing. The app follows a stateless, serverless architecture with a freemium business model (ad-supported free tier + premium subscription).
+**Just The Recipe** is a Next.js web application that extracts clean, structured recipes from various sources (YouTube videos, blog posts, social media) using LLM-powered content parsing. The app follows a stateless, serverless architecture with a freemium business model (ad-supported free tier + premium subscription).
 
 ## Tech Stack
 
@@ -45,6 +45,7 @@ npm run type-check
 ## Architecture & Key Concepts
 
 ### Request Flow
+
 1. User submits URL or pastes text content
 2. Serverless function fetches content (YouTube transcript, webpage HTML, etc.)
 3. Content is preprocessed to reduce token count (remove ads, navigation, comments)
@@ -111,6 +112,7 @@ interface Recipe {
 ### Validation & Quality Checks
 
 Always validate LLM extraction responses for:
+
 - Required fields present (ingredients, instructions)
 - Ingredients list has at least 2 items
 - Instructions list has at least 2 steps
@@ -148,6 +150,7 @@ Always validate LLM extraction responses for:
 ## Development Phases
 
 ### Phase 1: MVP (Weeks 1-3)
+
 - Basic Next.js setup with TypeScript + Tailwind
 - Input form with URL validation
 - YouTube transcript & web scraping
@@ -155,11 +158,13 @@ Always validate LLM extraction responses for:
 - Recipe card display with print/copy functionality
 
 ### Phase 2: Monetization (Week 4)
+
 - Google AdSense integration
 - Stripe subscription setup
 - Session-based ad-free mode
 
 ### Phase 3: Optimization (Weeks 5-6)
+
 - Caching implementation
 - Rate limiting
 - Analytics integration
@@ -168,16 +173,19 @@ Always validate LLM extraction responses for:
 ## Important Constraints & Guidelines
 
 ### Copyright & Compliance
+
 - Focus on YouTube (public API) and public blog content
 - Add attribution links to original sources
 - Communicate that users should only extract recipes they have permission to use
 
 ### Cost Monitoring
+
 - Set up budget alerts in Vercel, Stripe, and LLM provider dashboards
 - Build internal dashboard tracking: API calls, cache hit rate, cost per extraction
 - Implement emergency kill switch if costs spiral
 
 ### Success Metrics
+
 - Extraction accuracy: 95%+
 - Processing time: <5 seconds
 - Cache hit rate: 40-60%
@@ -189,6 +197,7 @@ Always validate LLM extraction responses for:
 All project changes, decisions, and progress should be tracked in [WORK_LOG.md](WORK_LOG.md).
 
 Update the work log when:
+
 - Completing a development phase or major feature
 - Making architectural decisions
 - Encountering and solving significant bugs

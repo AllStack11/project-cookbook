@@ -1,37 +1,47 @@
-import { Recipe, RecipeValidationResult, ValidationError } from '@/types/recipe';
+import {
+  Recipe,
+  RecipeValidationResult,
+  ValidationError,
+} from "@/types/recipe";
 
 const HALLUCINATION_KEYWORDS = [
-  'lorem ipsum',
-  'placeholder',
-  'example',
-  'sample',
-  'todo',
-  'tbd',
-  'to be determined',
-  'your ingredient here',
-  'add your',
+  "lorem ipsum",
+  "placeholder",
+  "example",
+  "sample",
+  "todo",
+  "tbd",
+  "to be determined",
+  "your ingredient here",
+  "add your",
 ];
 
 export function validateRecipe(recipe: Recipe): RecipeValidationResult {
   const errors: ValidationError[] = [];
+  let missingTitle = false;
+  let missingIngredients = false;
+  let missingInstructions = false;
 
   // Check required fields
   if (!recipe.title || recipe.title.trim().length === 0) {
+    missingTitle = true;
     errors.push({
-      field: 'title',
-      message: 'Recipe title is required',
+      field: "title",
+      message: "Recipe title is required",
     });
   }
 
   if (!recipe.ingredients || !Array.isArray(recipe.ingredients)) {
+    missingIngredients = true;
     errors.push({
-      field: 'ingredients',
-      message: 'Ingredients list is required',
+      field: "ingredients",
+      message: "Ingredients list is required",
     });
   } else if (recipe.ingredients.length < 2) {
+    missingIngredients = true;
     errors.push({
-      field: 'ingredients',
-      message: 'Recipe must have at least 2 ingredients',
+      field: "ingredients",
+      message: "Recipe must have at least 2 ingredients",
     });
   } else {
     // Validate each ingredient
@@ -46,14 +56,16 @@ export function validateRecipe(recipe: Recipe): RecipeValidationResult {
   }
 
   if (!recipe.instructions || !Array.isArray(recipe.instructions)) {
+    missingInstructions = true;
     errors.push({
-      field: 'instructions',
-      message: 'Instructions list is required',
+      field: "instructions",
+      message: "Instructions list is required",
     });
   } else if (recipe.instructions.length < 2) {
+    missingInstructions = true;
     errors.push({
-      field: 'instructions',
-      message: 'Recipe must have at least 2 instruction steps',
+      field: "instructions",
+      message: "Recipe must have at least 2 instruction steps",
     });
   } else {
     // Validate each instruction
@@ -77,22 +89,47 @@ export function validateRecipe(recipe: Recipe): RecipeValidationResult {
   const hasHallucination = detectHallucination(recipe);
   if (hasHallucination) {
     errors.push({
-      field: 'content',
-      message: 'Recipe contains placeholder or hallucinated content',
+      field: "content",
+      message: "Recipe contains placeholder or hallucinated content",
     });
   }
 
   // Validate servings if present
-  if (recipe.servings !== undefined && (recipe.servings < 1 || recipe.servings > 100)) {
+  // Validate mandatory metadata
+  if (!recipe.servings || recipe.servings < 1 || recipe.servings > 100) {
     errors.push({
-      field: 'servings',
-      message: 'Servings must be between 1 and 100',
+      field: "servings",
+      message: "Valid servings (1-100) is required",
+    });
+  }
+
+  if (!recipe.prepTime || recipe.prepTime.trim().length === 0) {
+    errors.push({
+      field: "prepTime",
+      message: "Prep time is required",
+    });
+  }
+
+  if (!recipe.cookTime || recipe.cookTime.trim().length === 0) {
+    errors.push({
+      field: "cookTime",
+      message: "Cook time is required",
+    });
+  }
+
+  if (!recipe.totalTime || recipe.totalTime.trim().length === 0) {
+    errors.push({
+      field: "totalTime",
+      message: "Total time is required",
     });
   }
 
   return {
     isValid: errors.length === 0,
     errors,
+    missingTitle,
+    missingIngredients,
+    missingInstructions,
   };
 }
 
@@ -126,7 +163,7 @@ function detectHallucination(recipe: Recipe): boolean {
 
 function containsHallucinationKeywords(text: string): boolean {
   const lowerText = text.toLowerCase();
-  return HALLUCINATION_KEYWORDS.some(keyword => lowerText.includes(keyword));
+  return HALLUCINATION_KEYWORDS.some((keyword) => lowerText.includes(keyword));
 }
 
 export function isValidRecipe(recipe: Recipe): boolean {

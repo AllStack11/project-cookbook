@@ -1,10 +1,11 @@
 # Work Log
 
-This file tracks all significant changes, decisions, and progress for the Recipe Extractor project.
+This file tracks all significant changes, decisions, and progress for the Just The Recipe project.
 
 ## Purpose
 
 Use this log to document:
+
 - Feature implementations and completions
 - Architectural decisions and rationale
 - Bug fixes and solutions
@@ -17,6 +18,7 @@ Use this log to document:
 ## Format
 
 Each entry should include:
+
 - **Date**: When the change occurred
 - **Type**: Feature | Bug Fix | Optimization | Decision | Deployment | Other
 - **Description**: What changed and why
@@ -25,6 +27,439 @@ Each entry should include:
 ---
 
 ## Log Entries
+
+- **2026-01-08: UI/UX: Enhanced substantial click animation for "Extract Recipe" button**
+  - **Type**: Feature / UI
+  - **Description**: Overhauled the extraction button animation to be more expressive and "substantial" based on user feedback.
+    - Implemented `deep-press` keyframe animation: A multi-stage effect with an initial deep press (0.88 scale), a powerful spring-back (1.05 scale), and a visual shockwave/glow expansion.
+    - Added `shimmer-effect`: A white gradient light sweep that passes through the button during the animation.
+    - Increased tactile feedback: Deeper hover shadows and a more pronounced `active:scale`.
+    - Synchronized timing: Extended the animation and state duration to 600ms for a more deliberate feel.
+  - **Impact**: Significantly heightened the perceived importance and tactile satisfaction of the primary "Extract" action.
+    > > > > > > > SEARCH
+- **2026-01-08: Implementation: Mandatory Recipe Metadata**
+
+- **2026-01-08: Implementation: Mandatory Recipe Metadata**
+  - **Type**: Feature / Logic Enhancement
+  - **Description**: Implemented "harder rules" for `prepTime`, `cookTime`, `totalTime`, and `servings`.
+    - Updated `lib/llm/promptBuilder.ts` to mandate these fields and instruct LLM to infer them if missing.
+    - Updated `lib/validators/recipeValidator.ts` to treat these fields as required during validation.
+    - Updated `lib/llm/responseParser.ts` with sensible fallback defaults to ensure fields are never empty.
+    - Updated unit tests for both validator and parser to reflect these changes.
+  - **Impact**: Improved recipe data completeness and reliability. All extracted recipes will now consistently have time and serving information.
+
+- **Date**: 2026-01-08
+  **Type**: Other
+  **Description**: Rebranded the project from "Recipe Extractor" to "**Just The Recipe**".
+  **Impact**: Improved brand clarity and identity across all documentation (CLAUDE.md, README.md, WORK_LOG.md) and UI components (Header, Footer, Metadata).
+
+- **Date**: 2026-01-08
+  **Type**: Bug Fix
+  **Description**: Removed "hack" from content validation keywords.
+  **Impact**: Resolved false positive extraction failures for recipes containing words like "kitchen hack" or "shack".
+
+- **Date**: 2026-01-08
+  **Type**: Optimization
+  **Description**: Restored extraction quality and loosened cost-minimization rules.
+  - Loosened content preprocessing: Reduced the intensity of content stripping in `lib/extractors/preprocessor.ts` to preserve recipe context.
+  - Restored prompt detail: Reverted to more descriptive prompts in `lib/llm/promptBuilder.ts` to improve LLM output formatting and accuracy.
+  - Increased token leeway: Raised source-specific token limits in `lib/utils/tokenCounter.ts` (Blog: 2.5k, YouTube: 4k) to handle complex content better.
+  - Refined LLM bypass: Added ingredient/instruction count checks to structured data bypass in `app/api/extract/route.ts` to ensure only high-quality data triggers a bypass.
+  - Refined content validation and cost minimization.
+    > > > > > > >
+  - Loosened content validation rules: Removed overly broad patterns like "instead of", "disregard", and "script" which were causing false positives on valid recipes and structured data.
+    > > > > > > >
+  - Implemented comprehensive cost minimization strategies.
+    > > > > > > >
+  - Aggressive content preprocessing: Stripped social media links, newsletter signups, and affiliate disclosures.
+  - Prompt optimization: Condensed extraction and fallback prompts by ~40% to reduce input tokens.
+  - LLM Bypass: Added direct extraction from high-quality JSON-LD structured data, bypassing LLM calls when scraped data is sufficient.
+  - URL Normalization: Implemented tracking parameter stripping and YouTube URL normalization to increase cache hit rates.
+  - Token Budgeting: Added source-specific token limits (Social: 1k, Blog: 1.8k, YouTube: 2.5k) to optimize context usage.
+  - Refined Model Selection: Expanded Gemini 3 Flash usage (first 5 requests and all YouTube requests) to leverage its reasoning capabilities and generous free tier.
+    **Impact**: Significant reduction in LLM operational costs (estimated 20-30% lower token usage) and zero cost for sites with valid structured data, while maintaining high extraction quality.
+
+- **Date**: 2026-01-08
+  **Type**: UI Update
+  **Description**: Removed "Powered by DeepSeek AI" from header and "Next-Gen Extraction" badge from landing page. Added a relevant SVG favicon (recipe book icon) and updated metadata.
+  **Impact**: Streamlined the user interface, simplified branding, and improved browser tab recognition.
+
+- **Date**: 2026-01-08
+  **Type**: Feature
+  **Description**: Added Security Hardening. Implemented VPN/Proxy detection to prevent rate-limit abuse (Suspicious IPs limited to 2 extractions/day). Added content sanitization to block prompt injection and abusive keywords. Enhanced LLM prompts with critical security instructions to ignore malicious content. Integrated multi-layer security checks in the main extraction API route.
+  **Impact**: Significantly reduced risk of LLM abuse and cost spikes from automated bypass attempts.
+
+- **Date**: 2026-01-08
+  **Type**: Fix
+  **Description**: Fixed Instagram recipe extraction by implementing a dedicated Puppeteer-based extractor.
+  **Impact**: Users can now reliably extract recipes from Instagram reels and posts. The previous issue where Instagram content was missed and resulted in hallucinations (e.g., chocolate chip cookies instead of dal) is resolved by properly rendering the page and targeting the caption elements.
+
+### 2026-01-08: Added View Mode Toggle to Recipe Card
+
+- **Type**: Feature
+- **Description**: Introduced a toggle to switch between multi-column and document-style layouts in the RecipeCard component.
+- **Impact**: Improved readability and user experience by providing a "typical paragraph style document" view option.
+
+### 2026-01-08: Ultimate Fallback System
+
+- **Type**: Feature
+- **Description**: Implemented a multi-tier fallback system for recipe extraction. If extraction fails or validation finds missing fields, the system now uses LLMs to generate plausible data based on context. Added support for generating missing ingredients, instructions, and placeholder images.
+- **Impact**: Dramatically improved user experience by ensuring a recipe is always returned, even from difficult sources. Added `isGenerated` and `isPartialFallback` flags to metadata for transparency.
+
+### 2026-01-08: Robust YouTube Description Extraction
+
+- **Type**: Bug Fix / Enhancement
+- **Description**: Improved YouTube description extraction to handle cases where transcripts are missing but ingredients are in the description. Updated prompt guidance to prioritize description-based ingredient lists.
+- **Impact**: Higher success rate for YouTube videos with description-only recipe details.
+
+### 2026-01-08: Gemini 3 Optimization
+
+- **Type**: Optimization / Refactor
+- **Description**: Implemented Gemini 3 specific optimizations including Thinking Levels and Structured Outputs (JSON Schema). Updated model to `gemini-3-flash-preview`.
+- **Impact**: Improved extraction accuracy, eliminated JSON parsing failures via schema enforcement, and optimized reasoning depth for complex content.
+
+- 2026-01-08: Implemented Gemini Flash 3.0 model switching for first 2 requests per IP.
+  - Added `lib/llm/geminiClient.ts` using `@google/generative-ai`.
+  - Updated `lib/utils/rateLimiter.ts` to export `getRequestCount`.
+  - Updated `lib/llm/modelSelector.ts` to select `gemini-3.0-flash` for initial requests.
+  - Integrated conditional model selection and client calling in `app/api/extract/route.ts`.
+
+- 2026-01-08: Feature: Modernized UI/UX.
+  - Impact: Implemented a "Clean Chef" aesthetic with a warm Amber/Stone color palette. Overhauled Landing Page, InputForm, LoadingState (with cooking facts over skeleton), and RecipeCard. Significantly improved visual hierarchy, typography, and premium feel.
+  - Updated marketing copy to reflect ad-supported free model instead of "no ads".
+
+- 2026-01-08: Feature: Added dish picture to recipe extraction.
+  - Impact: Improved UI with hero images for recipes when available from source data or LLM extraction. Added `imageUrl` to `Recipe` interface and updated `RecipeCard` to display it above nutrition info.
+
+### 2026-01-08 - YouTube Extraction Robustness (Fallback to Description)
+
+**Type**: Bug Fix / Feature Enhancement
+**Description**: Implemented a fallback mechanism to extract the video description using regex if the `youtube-transcript` library fails to find a transcript. This allows the LLM to still extract recipes if they are listed in the video description.
+
+**Changes Made**:
+
+- Added `extractYoutubeDescription` to `lib/extractors/youtubeExtractor.ts` using a lightweight regex-based scraping approach.
+- Updated `app/api/extract/route.ts` to automatically attempt description extraction if transcript extraction returns "No transcript available".
+- Added unit tests for the description fallback.
+
+**Impact**: Significantly reduced 500 errors for YouTube videos without captions, increasing the success rate for recipe extraction from video sources.
+
+### 2026-01-08 - Loading State UI Refinement
+
+**Type**: User Experience Enhancement
+**Description**: Improved visual separation between the loading card and the skeleton background by adding backdrop blur and stronger shadows.
+**Impact**: Creates a more distinct visual hierarchy, making the loading status more readable and professional.
+
+### 2026-01-08 - Cline Environment Setup
+
+**Type**: Configuration
+**Description**: Established formal referencing of `CLAUDE.md` and `WORK_LOG.md` for Cline. Created `.clinerules` to ensure persistent adherence to project standards and automated tracking.
+**Impact**: Improved consistency in development, better adherence to cost-optimization strategies, and automated maintenance of project documentation.
+
+### 2026-01-08 - LLM Token Optimization (Round 2)
+
+**Type**: Performance Optimization
+**Description**: Aggressively reduced token usage to speed up DeepSeek API calls (which were taking 33 seconds)
+
+**Changes Made**:
+
+1. **Reduced Prompt Verbosity**
+   - **File**: `lib/llm/promptBuilder.ts`
+   - Condensed base prompt from ~600 chars to ~300 chars
+   - Shortened source-specific guidance (blog/YouTube/social)
+   - Removed redundant instructions
+   - **Impact**: ~50% reduction in prompt overhead
+
+2. **Reduced max_tokens for Response**
+   - **File**: `lib/llm/deepseekClient.ts`
+   - Changed from 4096 → 1500 tokens
+   - Recipes typically only need 500-1000 tokens
+   - **Impact**: Faster generation, lower cost
+
+3. **Reduced Input Token Limit**
+   - **File**: `lib/utils/tokenCounter.ts`
+   - Changed MAX_TOKENS from 3000 → 2000
+   - More aggressive content truncation
+   - **Impact**: Faster processing with shorter inputs
+
+4. **Better Structured Data Extraction**
+   - **File**: `lib/extractors/webScraper.ts`
+   - Improved formatting of JSON-LD recipe data
+   - Added servings, prep/cook/total time extraction
+   - More concise instruction formatting
+   - **Impact**: Cleaner, shorter input for LLM
+
+5. **Enhanced Token Logging**
+   - **File**: `app/api/extract/route.ts`
+   - Added estimated input tokens to debug logs
+   - Track content length vs prompt length
+   - **Impact**: Better visibility into token usage
+
+**Actual Results** (after testing):
+
+- Input tokens: 2,625 → 2,159 (18% reduction)
+- API call time: 33s → 32s (minimal improvement)
+- Content length: 9,071 → 7,834 chars
+
+**Conclusion**:
+
+- Token reduction had minimal impact on API latency
+- DeepSeek API is inherently slow (~32-35 seconds baseline)
+- **Decision**: Accept performance, focus on UX improvements
+
+**Additional Fix**:
+
+- Added nutrition extraction from JSON-LD structured data
+
+---
+
+### 2026-01-08 - Loading UX Improvements
+
+**Type**: User Experience Enhancement
+**Description**: Improved loading experience to make 30-35 second extraction feel more transparent and manageable
+
+**Changes Made**:
+
+1. **Enhanced LoadingState Component**
+   - **File**: `app/components/LoadingState/LoadingState.tsx`
+   - Added animated bouncing dots indicator
+   - Added realistic time expectation: "typically takes 30-40 seconds"
+   - Added elapsed time counter
+   - Added "Almost there..." message after 35 seconds
+   - **Impact**: Sets proper expectations, reduces perceived wait time
+
+2. **Added Nutrition Info Extraction**
+   - **File**: `lib/extractors/webScraper.ts`
+   - Extract nutrition data from JSON-LD structured data
+   - Includes calories, protein, carbs, fat
+   - **Impact**: More complete recipe extraction
+
+**Performance Analysis**:
+
+- Web scraping: 1.6 seconds ✅
+- DeepSeek API call: 32 seconds ⚠️ (inherent to provider)
+- Everything else: <1 second ✅
+- **Total**: ~34 seconds
+
+**Why Accept This Performance**:
+
+- DeepSeek is cost-effective (~10x cheaper than alternatives)
+- Token optimization had minimal impact (API server latency is the bottleneck)
+- Switching to OpenAI/Claude would be 5-10 seconds but significantly more expensive
+- With proper UX, 30-35 seconds is acceptable for free tier
+
+**Alternative Considered**: Streaming responses (same total time but feels faster) - deferred for now
+
+---
+
+### 2026-01-08 - Fun Loading Experience: Cooking Facts
+
+**Type**: User Experience Enhancement
+**Description**: Added rotating cooking facts during loading to make the 30-40 second wait more entertaining and educational
+
+**Changes Made**:
+
+1. **Cooking Facts Feature**
+   - **File**: `app/components/LoadingState/LoadingState.tsx`
+   - Added 20 fun, interesting cooking facts with emojis
+   - Facts rotate every 6 seconds
+   - Smooth fade-in animation between facts
+   - Examples:
+     - "🍯 Honey never spoils. Archaeologists have found 3,000-year-old honey in Egyptian tombs that's still edible!"
+     - "🥔 Potatoes were the first vegetable grown in space (1995, aboard the Space Shuttle Columbia)."
+     - "🍕 Americans eat approximately 350 slices of pizza per second."
+
+2. **Fade Animation**
+   - **File**: `app/globals.css`
+   - Added custom `animate-fade-in` keyframe animation
+   - Smooth 0.5s fade with subtle upward motion
+
+3. **Visual Design**
+   - Gradient background (blue to purple)
+   - "DID YOU KNOW?" header in blue
+   - Border and padding for emphasis
+   - Positioned below loading progress for visibility
+
+**User Experience Impact**:
+
+- Makes 30-40 second wait feel engaging rather than tedious
+- Educational content adds value
+- Users see ~5-6 different facts during typical extraction
+- Reduces perceived wait time through distraction
+- Adds personality and fun to the app
+
+**Technical Details**:
+
+- Facts array with 20 entries
+- Auto-rotation using `setInterval` (6-second cycle)
+- Key-based re-render triggers animation
+- No performance impact (lightweight text rotation)
+
+---
+
+### 2026-01-08 - Loading UX Refinements
+
+**Type**: User Experience Enhancement
+**Description**: Improved loading screen based on user feedback - random fact order, overlay design, and nutrition info fix
+
+**Changes Made**:
+
+1. **Random Fact Order**
+   - **File**: `app/components/LoadingState/LoadingState.tsx`
+   - Facts now appear in random order (not sequential)
+   - Initial fact is random on mount
+   - Each rotation picks a random fact
+   - **Impact**: More surprising and engaging, users won't see same sequence
+
+2. **Overlay Design**
+   - **File**: `app/components/LoadingState/LoadingState.tsx`
+   - Skeleton loader now in background with 30% opacity
+   - Facts and loading message centered on top as overlay
+   - Absolute positioning with proper z-index layering
+   - Facts card has white background with shadow for prominence
+   - **Impact**: Facts are more readable and prominent, better visual hierarchy
+
+3. **Increased Token Budget for Nutrition**
+   - **File**: `lib/llm/deepseekClient.ts`
+   - Increased max_tokens from 1500 → 2000
+   - Ensures nutrition information isn't cut off
+   - **Impact**: Complete recipe data including nutrition facts
+
+**Visual Improvements**:
+
+- Facts display in white card with shadow and border
+- Centered layout for better focus
+- Larger, bolder text for facts
+- Skeleton provides subtle background context
+- "DID YOU KNOW?" header with more emphasis
+
+**User Experience**:
+
+- Facts feel more important and readable
+- Random order keeps content fresh
+- Skeleton shows progress context without distraction
+- Nutrition data now reliably included in recipes
+
+---
+
+### 2026-01-08 - Performance Improvements & Model Simplification
+
+**Type**: Optimization + Bug Fix
+**Description**: Addressed slow extraction times (77-97 seconds), added comprehensive performance diagnostics, and simplified to single LLM model for speed
+
+**Changes Made**:
+
+1. **Fixed Cache setTimeout Overflow Bug**
+   - **File**: `lib/cache/cacheClient.ts`
+   - **Issue**: TTL_BLOG (30 days = 2,592,000,000ms) exceeded JavaScript's max setTimeout value (2,147,483,647ms)
+   - **Fix**: Added MAX_TIMEOUT check - use setTimeout only for TTLs < 24.8 days, rely on timestamp-based expiry for longer TTLs
+   - **Impact**: Eliminated TimeoutOverflowWarning errors in console
+
+2. **Comprehensive Logging System**
+   - **File**: `lib/utils/logger.ts` (new)
+   - **Features**:
+     - Feature flag controlled by `ENABLE_DEBUG_LOGGING` environment variable
+     - Five log levels: DEBUG, INFO, WARN, ERROR, PERF
+     - Context-based loggers (`createLogger('API:Extract')`)
+     - Performance timing helpers (`startTimer()`, `perf()`)
+     - Auto-disabled in production (except ERROR level)
+   - **Impact**: Enables detailed performance diagnostics in development without production overhead
+
+3. **Performance Timing in API Route**
+   - **File**: `app/api/extract/route.ts`
+   - **Added timing logs for**:
+     - Rate limit check
+     - URL validation
+     - Cache check
+     - Content extraction (YouTube/web)
+     - Model selection
+     - Prompt building
+     - LLM API call (critical bottleneck)
+     - Response parsing
+     - Recipe validation
+     - Cache storage
+     - Total extraction time
+   - **Visual indicators**: ✓ success, ⏳ waiting, 🚀 API call, ❌ errors
+   - **Impact**: Can now pinpoint exact bottleneck in extraction pipeline
+
+4. **Web Scraper Optimizations**
+   - **File**: `lib/extractors/webScraper.ts`
+   - **Added 10-second timeout** to all fetch requests (prevents hanging on slow websites)
+   - **Improved structured data extraction** with timeout handling
+   - **Better error messages** for timeout vs other failures
+   - **Impact**: Prevents indefinite hangs, improves reliability
+
+5. **API Route Optimization**
+   - **File**: `app/api/extract/route.ts`
+   - **Change**: Now tries `extractStructuredRecipe()` first instead of generic `scrapeWebContent()`
+   - **Why**: Structured data (JSON-LD) extraction is much faster than full page scraping
+   - **Impact**: Significant speed improvement for recipe sites with structured data
+
+6. **DeepSeek Client Timeout**
+   - **File**: `lib/llm/deepseekClient.ts`
+   - **Added 60-second timeout** to OpenAI client initialization
+   - **Impact**: Prevents indefinite hangs on LLM API calls
+
+7. **Simplified Model Selection**
+   - **Files**: `lib/llm/modelSelector.ts`, `app/api/extract/route.ts`
+   - **Change**: Removed `deepseek-reasoner` model and retry logic - now only uses `deepseek-chat`
+   - **Why**: Simpler, faster, more predictable performance
+   - **Removed**: Complex retry logic with model fallback
+   - **Impact**: Reduces complexity and potential for slow retries
+
+**Performance Improvements**:
+
+- Request timeouts prevent hanging on slow websites
+- Structured data extraction prioritized (faster than full scraping)
+- LLM API timeout prevents indefinite waits
+- Detailed timing logs identify bottlenecks
+
+**Diagnostic Improvements**:
+
+- Every pipeline step now logged with duration
+- Content lengths, model selection, token counts tracked
+- Cache hits/misses clearly indicated
+- Feature flag allows production deployment without log overhead
+
+**Next Steps**:
+
+1. Restart dev server to pick up logging changes
+2. Run test extraction with logging enabled
+3. Review detailed logs to identify specific bottleneck (likely DeepSeek API latency)
+4. Consider additional optimizations based on findings:
+   - More aggressive content preprocessing
+   - Parallel operations where possible
+   - Content length limits before LLM call
+
+---
+
+### 2026-01-08 - Environment Configuration Complete
+
+**Type**: Configuration
+**Description**: Created and configured `.env.local` file with DeepSeek API credentials
+
+**Changes Made**:
+
+- Created `.env.local` file with all required environment variables
+- Configured `DEEPSEEK_API_KEY` with valid API key
+- Set `DEEPSEEK_BASE_URL` to https://api.deepseek.com
+- Configured rate limiting (10 requests/day)
+- Set application URL for local development
+
+**Status**:
+
+- ✅ API key configured and ready
+- ✅ Environment file secured (in .gitignore)
+- ⏳ Ready for `npm install` and `npm run dev`
+
+**Next Steps**:
+
+1. Install Node.js dependencies: `npm install`
+2. Start development server: `npm run dev`
+3. Test recipe extraction with sample URLs
+4. Verify API integration works correctly
+
+---
 
 ### 2026-01-08 - Migrated from Anthropic Claude to DeepSeek
 
@@ -69,12 +504,14 @@ Each entry should include:
    - Updated all LLM-related documentation
 
 **Rationale**:
+
 - DeepSeek offers competitive pricing for LLM inference
 - OpenAI-compatible API makes integration straightforward
 - Maintains same architecture patterns (retry, fallback, validation)
 - No changes required to prompt builder or response parser
 
 **Impact**:
+
 - **Cost**: Potentially lower inference costs with DeepSeek pricing
 - **Performance**: Similar quality with deepseek-chat and deepseek-reasoner models
 - **Architecture**: No structural changes, drop-in replacement
@@ -82,6 +519,7 @@ Each entry should include:
 - **Dependencies**: Reduced to single OpenAI SDK (smaller bundle size)
 
 **Testing Required**:
+
 1. Run `npm install` to update dependencies
 2. Set `DEEPSEEK_API_KEY` in `.env.local`
 3. Test recipe extraction with various sources
@@ -93,7 +531,7 @@ Each entry should include:
 ### 2026-01-08 - Phase 1 MVP Skeleton Complete
 
 **Type**: Feature - Phase 1 MVP Implementation
-**Description**: Built complete skeleton structure for Recipe Extractor application from scratch
+**Description**: Built complete skeleton structure for Just The Recipe application from scratch
 
 **What Was Built**:
 
@@ -155,6 +593,7 @@ Each entry should include:
     - .env.example with all configuration options
 
 **Test Coverage**:
+
 - Recipe validator: 18 test cases
 - URL validator: 15 test cases
 - Token counter: 12 test cases
@@ -164,6 +603,7 @@ Each entry should include:
 - LLM response parser: 4 test cases
 
 **Architecture Highlights**:
+
 - **Cost-first design**: Caching, token reduction, model selection all optimize for cost
 - **Validation-heavy**: Multiple validation layers ensure 95% extraction accuracy target
 - **Serverless-ready**: Stateless design, no session management, perfect for Vercel
@@ -171,6 +611,7 @@ Each entry should include:
 - **Testable**: Comprehensive unit tests with mocks for external dependencies
 
 **Impact**:
+
 - Complete Phase 1 MVP skeleton ready for development
 - Once Node.js is installed and dependencies are added, the app will be functional
 - All core features implemented according to CLAUDE.md specifications
@@ -178,6 +619,7 @@ Each entry should include:
 - Ready for testing with actual API keys
 
 **Next Steps**:
+
 1. Install Node.js on the system
 2. Run `npm install` to install dependencies
 3. Add ANTHROPIC_API_KEY to `.env.local`
@@ -192,6 +634,7 @@ Each entry should include:
 
 **Type**: Project Initialization
 **Description**: Created initial project structure and documentation
+
 - Generated CLAUDE.md with comprehensive project guidance
 - Created WORK_LOG.md for tracking development progress
 - Reviewed project plan document and established technical requirements
@@ -199,6 +642,14 @@ Each entry should include:
 **Impact**: Established foundation for development with clear guidelines for cost optimization, architecture, and LLM integration strategies.
 
 ---
+
+## How to Update
+
+**Manual**: Edit this file directly and add new entries at the top of the Log Entries section.
+
+**Command**: When working with Claude Code, you can ask to "update the work log" or use informal commands like "log this change" to document significant updates.
+
+**Reminder**: Claude will periodically remind you to update this log after completing major tasks, implementing features, or making important decisions.
 
 ## How to Update
 

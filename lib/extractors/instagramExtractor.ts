@@ -1,0 +1,115 @@
+import puppeteer from "puppeteer";
+import { WebScraperResult } from "./webScraper";
+import { preprocessContent } from "./preprocessor";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("Extractor:Instagram");
+
+export async function scrapeInstagramContent(
+  url: string
+): Promise<WebScraperResult> {
+  let browser;
+  try {
+    logger.info("Launching Puppeteer for Instagram extraction", { url });
+
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+
+    // Set viewport to desktop to ensure full content loads
+    await page.setViewport({ width: 1280, height: 800 });
+
+    // Set a realistic user agent
+    await page.setUserAgent(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    );
+
+    // Navigate to URL
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+
+    // Wait for the main content or caption to appear
+    // Instagram captions are often within article elements or specific classes
+    try {
+      await page.waitForSelector("article", { timeout: 10000 });
+    } catch (e) {
+      logger.warn("Timeout waiting for article selector, proceeding anyway");
+    }
+
+    // Extract content
+    const data = await page.evaluate(() => {
+      // Try to find the caption
+      // Commonly in h1 or span within the first article
+      const article = document.querySelector("article");
+      if (!article)
+        return { text: document.body.innerText, title: document.title };
+
+      // In many IG layouts, the caption is in a span inside an h1 or just a span in the header area
+      // We'll try a few common selectors
+      const captionSelectors = [
+        "h1", // Usually contains the main caption text
+        "span._ap3a._aaco._aacu._aacx._aad7._aade", // Specific modern IG classes
+        "div._a9zs", // Another common caption container
+        'article [role="presentation"] span',
+      ];
+
+      let caption = "";
+      for (const selector of captionSelectors) {
+        const elements = article.querySelectorAll(selector);
+        for (const el of Array.from(elements)) {
+          const text = el.textContent?.trim() || "";
+          if (text.length > caption.length) {
+            caption = text;
+          }
+        }
+      }
+
+      // If we couldn't find a clear caption, grab all text from the article
+      if (!caption || caption.length < 50) {
+        caption = article.innerText;
+      }
+
+      return {
+        text: caption,
+        title: document.title,
+      };
+    });
+
+    await browser.close();
+    browser = null;
+
+    if (!data.text || data.text.trim().length === 0) {
+      return {
+        success: false,
+        error: "Could not extract caption from Instagram page",
+      };
+    }
+
+    logger.info("Instagram content extracted successfully", {
+      contentLength: data.text.length,
+      title: data.title,
+    });
+
+    const processed = preprocessContent(data.text);
+
+    return {
+      success: true,
+      content: processed.text,
+      metadata: {
+        url,
+        title: data.title,
+      },
+    };
+  } catch (error) {
+    if (browser) await browser.close();
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.error("Instagram extraction failed", { error: errorMessage });
+    return {
+      success: false,
+      error: `Failed to scrape Instagram: ${errorMessage}`,
+    };
+  }
+}

@@ -1,5 +1,8 @@
-import * as cheerio from 'cheerio';
-import { preprocessContent } from './preprocessor';
+import * as cheerio from "cheerio";
+import { preprocessContent } from "./preprocessor";
+import { scrapeInstagramContent } from "./instagramExtractor";
+
+import { Recipe } from "@/types/recipe";
 
 export interface WebScraperResult {
   success: boolean;
@@ -9,6 +12,7 @@ export interface WebScraperResult {
     url: string;
     title?: string;
   };
+  recipe?: Recipe; // Optional pre-parsed recipe
 }
 
 export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
@@ -16,16 +20,27 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
     if (!url || url.trim().length === 0) {
       return {
         success: false,
-        error: 'URL is required',
+        error: "URL is required",
       };
     }
 
-    // Fetch HTML
+    // Special handling for Instagram
+    if (url.includes("instagram.com")) {
+      return scrapeInstagramContent(url);
+    }
+
+    // Fetch HTML with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; RecipeExtractor/1.0)',
+        "User-Agent": "Mozilla/5.0 (compatible; RecipeExtractor/1.0)",
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       return {
@@ -40,30 +55,30 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
     const $ = cheerio.load(html);
 
     // Remove unwanted elements
-    $('script').remove();
-    $('style').remove();
-    $('nav').remove();
-    $('header').remove();
-    $('footer').remove();
-    $('.advertisement').remove();
-    $('.ad').remove();
-    $('.comments').remove();
-    $('.sidebar').remove();
+    $("script").remove();
+    $("style").remove();
+    $("nav").remove();
+    $("header").remove();
+    $("footer").remove();
+    $(".advertisement").remove();
+    $(".ad").remove();
+    $(".comments").remove();
+    $(".sidebar").remove();
 
     // Try to extract main content
-    let content = '';
-    const title = $('title').text().trim();
+    let content = "";
+    const title = $("title").text().trim();
 
     // Look for common content selectors
     const contentSelectors = [
-      'article',
-      'main',
+      "article",
+      "main",
       '[role="main"]',
-      '.post-content',
-      '.article-content',
-      '.entry-content',
-      '.recipe',
-      '.content',
+      ".post-content",
+      ".article-content",
+      ".entry-content",
+      ".recipe",
+      ".content",
     ];
 
     for (const selector of contentSelectors) {
@@ -76,13 +91,13 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
 
     // Fallback to body if no specific content found
     if (!content || content.trim().length < 100) {
-      content = $('body').text();
+      content = $("body").text();
     }
 
     if (!content || content.trim().length === 0) {
       return {
         success: false,
-        error: 'No content found on page',
+        error: "No content found on page",
       };
     }
 
@@ -98,7 +113,17 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
       },
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
+    // Handle timeout specifically
+    if (error instanceof Error && error.name === "AbortError") {
+      return {
+        success: false,
+        error: "Request timeout: Website took too long to respond",
+      };
+    }
+
     return {
       success: false,
       error: `Failed to scrape web content: ${errorMessage}`,
@@ -106,13 +131,27 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
   }
 }
 
-export async function extractStructuredRecipe(url: string): Promise<WebScraperResult> {
+export async function extractStructuredRecipe(
+  url: string
+): Promise<WebScraperResult> {
   try {
+    // Special handling for Instagram
+    if (url.includes("instagram.com")) {
+      return scrapeInstagramContent(url);
+    }
+
+    // Fetch with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; RecipeExtractor/1.0)',
+        "User-Agent": "Mozilla/5.0 (compatible; RecipeExtractor/1.0)",
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       return {
@@ -130,10 +169,14 @@ export async function extractStructuredRecipe(url: string): Promise<WebScraperRe
 
     scripts.each((_, element) => {
       try {
-        const json = JSON.parse($(element).html() || '');
-        if (json['@type'] === 'Recipe' || (Array.isArray(json['@graph']) && json['@graph'].some((item: any) => item['@type'] === 'Recipe'))) {
-          recipeData = Array.isArray(json['@graph'])
-            ? json['@graph'].find((item: any) => item['@type'] === 'Recipe')
+        const json = JSON.parse($(element).html() || "");
+        if (
+          json["@type"] === "Recipe" ||
+          (Array.isArray(json["@graph"]) &&
+            json["@graph"].some((item: any) => item["@type"] === "Recipe"))
+        ) {
+          recipeData = Array.isArray(json["@graph"])
+            ? json["@graph"].find((item: any) => item["@type"] === "Recipe")
             : json;
         }
       } catch {
@@ -142,22 +185,67 @@ export async function extractStructuredRecipe(url: string): Promise<WebScraperRe
     });
 
     if (recipeData) {
-      // Convert structured data to text
-      const parts = [];
-      if (recipeData.name) parts.push(`Recipe: ${recipeData.name}`);
-      if (recipeData.description) parts.push(recipeData.description);
-      if (recipeData.recipeIngredient) parts.push(`Ingredients: ${recipeData.recipeIngredient.join(', ')}`);
-      if (recipeData.recipeInstructions) {
-        const instructions = Array.isArray(recipeData.recipeInstructions)
-          ? recipeData.recipeInstructions.map((inst: any) => inst.text || inst).join(' ')
-          : recipeData.recipeInstructions;
-        parts.push(`Instructions: ${instructions}`);
+      // Create a pre-parsed recipe to potentially bypass LLM
+      const recipe: Recipe = {
+        title: recipeData.name || "",
+        description: recipeData.description,
+        servings: parseInt(recipeData.recipeYield) || undefined,
+        prepTime: recipeData.prepTime,
+        cookTime: recipeData.cookTime,
+        totalTime: recipeData.totalTime,
+        ingredients: (recipeData.recipeIngredient || []).map((ing: string) => ({
+          item: ing,
+        })),
+        instructions: (Array.isArray(recipeData.recipeInstructions)
+          ? recipeData.recipeInstructions
+          : []
+        ).map((inst: any, i: number) => ({
+          step: i + 1,
+          text: inst.text || inst,
+        })),
+        notes: [],
+        sourceUrl: url,
+      };
+
+      // Extract image
+      if (recipeData.image) {
+        recipe.imageUrl = Array.isArray(recipeData.image)
+          ? recipeData.image[0]
+          : recipeData.image.url || recipeData.image;
       }
 
-      const content = parts.join('\n\n');
+      // Extract nutrition
+      if (recipeData.nutrition) {
+        recipe.nutrition = {
+          calories: parseInt(recipeData.nutrition.calories),
+          protein: recipeData.nutrition.proteinContent,
+          carbs: recipeData.nutrition.carbohydrateContent,
+          fat: recipeData.nutrition.fatContent,
+        };
+      }
+
+      // Convert structured data to concise text as fallback for LLM
+      const parts = [];
+      if (recipeData.name) parts.push(`${recipeData.name}`);
+      if (recipeData.description) parts.push(recipeData.description);
+      if (recipe.imageUrl) parts.push(`Image: ${recipe.imageUrl}`);
+      if (recipeData.recipeYield)
+        parts.push(`Servings: ${recipeData.recipeYield}`);
+      if (recipeData.recipeIngredient) {
+        parts.push(`Ingredients:\n${recipeData.recipeIngredient.join("\n")}`);
+      }
+      if (recipeData.recipeInstructions) {
+        const instructionsText = recipe.instructions
+          .map((inst) => `${inst.step}. ${inst.text}`)
+          .join("\n");
+        parts.push(`Instructions:\n${instructionsText}`);
+      }
+
+      const content = parts.join("\n\n");
       return {
         success: true,
         content,
+        recipe,
         metadata: {
           url,
           title: recipeData.name,
@@ -168,7 +256,17 @@ export async function extractStructuredRecipe(url: string): Promise<WebScraperRe
     // Fallback to regular scraping
     return scrapeWebContent(url);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
+    // Handle timeout specifically
+    if (error instanceof Error && error.name === "AbortError") {
+      return {
+        success: false,
+        error: "Request timeout: Website took too long to respond",
+      };
+    }
+
     return {
       success: false,
       error: `Failed to extract structured recipe: ${errorMessage}`,

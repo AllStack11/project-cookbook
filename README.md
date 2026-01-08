@@ -1,4 +1,4 @@
-# Recipe Extractor
+# Just The Recipe
 
 A Next.js web application that extracts clean, structured recipes from various sources (YouTube videos, blog posts, social media) using LLM-powered content parsing.
 
@@ -30,6 +30,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 ### Installation
 
 1. **Clone the repository**
+
 ```bash
 git clone <your-repo-url>
 cd project-cookbook
@@ -40,6 +41,7 @@ cd project-cookbook
    - Verify installation: `node --version`
 
 3. **Install dependencies**
+
 ```bash
 npm install
 ```
@@ -64,6 +66,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 5. **Run the development server**
+
 ```bash
 npm run dev
 ```
@@ -138,11 +141,13 @@ The application includes comprehensive unit tests for:
 - Utilities (token counter, rate limiter)
 
 Run tests:
+
 ```bash
 npm test
 ```
 
 Coverage report:
+
 ```bash
 npm run test:coverage
 ```
@@ -161,10 +166,12 @@ The app implements several cost-saving strategies:
 See [.env.example](.env.example) for all available environment variables.
 
 Required:
+
 - `DEEPSEEK_API_KEY`: Your DeepSeek API key
 - `DEEPSEEK_BASE_URL`: DeepSeek API base URL (default: https://api.deepseek.com)
 
 Optional:
+
 - `REDIS_URL`: Redis connection for production caching
 - `RATE_LIMIT_MAX_REQUESTS`: Max requests per day (default: 10)
 

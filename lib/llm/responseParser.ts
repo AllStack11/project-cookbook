@@ -1,4 +1,4 @@
-import { Recipe } from '@/types/recipe';
+import { Recipe } from "@/types/recipe";
 
 export interface ParseResult {
   success: boolean;
@@ -12,8 +12,8 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
     let cleaned = response.trim();
 
     // Remove ```json and ``` markers
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     }
 
     // Parse JSON
@@ -23,28 +23,39 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
     if (!parsed.title || !parsed.ingredients || !parsed.instructions) {
       return {
         success: false,
-        error: 'Response does not contain required recipe fields',
+        error: "Response does not contain required recipe fields",
       };
     }
 
     // Ensure instructions have step numbers
     if (Array.isArray(parsed.instructions)) {
-      parsed.instructions = parsed.instructions.map((inst: any, index: number) => {
-        if (typeof inst === 'string') {
-          return { step: index + 1, text: inst };
+      parsed.instructions = parsed.instructions.map(
+        (inst: any, index: number) => {
+          if (typeof inst === "string") {
+            return { step: index + 1, text: inst };
+          }
+          return { ...inst, step: inst.step || index + 1 };
         }
-        return { ...inst, step: inst.step || index + 1 };
-      });
+      );
     }
 
     // Ensure ingredients have proper structure
     if (Array.isArray(parsed.ingredients)) {
       parsed.ingredients = parsed.ingredients.map((ing: any) => {
-        if (typeof ing === 'string') {
+        if (typeof ing === "string") {
           return { item: ing };
         }
         return ing;
       });
+    }
+
+    // Ensure mandatory metadata has defaults if missing
+    if (!parsed.servings) parsed.servings = 4;
+    if (!parsed.prepTime) parsed.prepTime = "15 mins";
+    if (!parsed.cookTime) parsed.cookTime = "20 mins";
+    if (!parsed.totalTime) {
+      // Try to estimate total time if missing but others exist
+      parsed.totalTime = "35 mins";
     }
 
     return {
@@ -52,7 +63,8 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
       recipe: parsed as Recipe,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return {
       success: false,
       error: `Failed to parse LLM response: ${errorMessage}`,

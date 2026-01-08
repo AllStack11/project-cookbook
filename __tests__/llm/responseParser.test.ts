@@ -1,40 +1,59 @@
-import { parseRecipeFromLLMResponse, extractJSONFromText } from '@/lib/llm/responseParser';
+import {
+  parseRecipeFromLLMResponse,
+  extractJSONFromText,
+} from "@/lib/llm/responseParser";
 
-describe('responseParser', () => {
-  describe('parseRecipeFromLLMResponse', () => {
-    it('should parse valid JSON recipe', () => {
+describe("responseParser", () => {
+  describe("parseRecipeFromLLMResponse", () => {
+    it("should parse valid JSON recipe", () => {
       const response = JSON.stringify({
-        title: 'Cookies',
-        ingredients: [{ item: 'flour', amount: '2', unit: 'cups' }],
-        instructions: [{ step: 1, text: 'Mix ingredients' }],
+        title: "Cookies",
+        ingredients: [{ item: "flour", amount: "2", unit: "cups" }],
+        instructions: [{ step: 1, text: "Mix ingredients" }],
       });
 
       const result = parseRecipeFromLLMResponse(response);
       expect(result.success).toBe(true);
-      expect(result.recipe?.title).toBe('Cookies');
+      expect(result.recipe?.title).toBe("Cookies");
     });
 
-    it('should handle markdown code blocks', () => {
-      const response = '```json\n{"title":"Test","ingredients":[{"item":"flour"}],"instructions":[{"step":1,"text":"Mix"}]}\n```';
+    it("should handle markdown code blocks", () => {
+      const response =
+        '```json\n{"title":"Test","ingredients":[{"item":"flour"}],"instructions":[{"step":1,"text":"Mix"}]}\n```';
       const result = parseRecipeFromLLMResponse(response);
       expect(result.success).toBe(true);
     });
 
-    it('should reject invalid JSON', () => {
-      const result = parseRecipeFromLLMResponse('{invalid json}');
+    it("should reject invalid JSON", () => {
+      const result = parseRecipeFromLLMResponse("{invalid json}");
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to parse');
+      expect(result.error).toContain("Failed to parse");
     });
 
-    it('should reject response without required fields', () => {
-      const response = JSON.stringify({ title: 'Test' });
+    it("should reject response without required fields", () => {
+      const response = JSON.stringify({ title: "Test" });
       const result = parseRecipeFromLLMResponse(response);
       expect(result.success).toBe(false);
     });
+
+    it("should provide default values for mandatory metadata if missing", () => {
+      const response = JSON.stringify({
+        title: "Cookies",
+        ingredients: [{ item: "flour" }, { item: "sugar" }],
+        instructions: [{ text: "Mix" }, { text: "Bake" }],
+      });
+
+      const result = parseRecipeFromLLMResponse(response);
+      expect(result.success).toBe(true);
+      expect(result.recipe?.servings).toBe(4);
+      expect(result.recipe?.prepTime).toBe("15 mins");
+      expect(result.recipe?.cookTime).toBe("20 mins");
+      expect(result.recipe?.totalTime).toBe("35 mins");
+    });
   });
 
-  describe('extractJSONFromText', () => {
-    it('should extract JSON from text', () => {
+  describe("extractJSONFromText", () => {
+    it("should extract JSON from text", () => {
       const text = 'Here is the recipe: {"title":"Test"}';
       const json = extractJSONFromText(text);
       expect(json).toBe('{"title":"Test"}');

@@ -1,0 +1,16 @@
+# Cline Project Rules
+
+When working on this project, you must adhere to the following rules:
+
+1. **Reference CLAUDE.md**: Always read `CLAUDE.md` at the start of a session. It contains the project overview, tech stack, architecture, and critical constraints (especially cost optimization).
+2. **Maintain WORK_LOG.md**: Every significant change, decision, or feature completion must be documented in `WORK_LOG.md`.
+3. **Follow Technical Standards**:
+   - Use the logging system in `lib/utils/logger.ts`.
+   - Adhere to the `Recipe` interface defined in `types/recipe.ts`.
+   - Prioritize cost-efficiency (DeepSeek models, token optimization, and caching).
+4. **Validation**: Always validate LLM responses using the logic in `lib/validators/recipeValidator.ts`.
+
+## Work Log Updates
+
+- Add new entries to the top of the "Log Entries" section in `WORK_LOG.md`.
+- Use the format: Date, Type, Description, and Impact.
