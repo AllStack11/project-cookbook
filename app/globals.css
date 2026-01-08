@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply h-full;
+  }
+
+  body {
+    @apply h-full bg-gray-50 text-gray-900;
+  }
+}
+
+@layer utilities {
+  @media print {
+    .print\\:hidden {
+      display: none !important;
+    }
+
+    .print\\:block {
+      display: block !important;
+    }
+
+    .print\\:shadow-none {
+      box-shadow: none !important;
+    }
+
+    .print\\:mb-4 {
+      margin-bottom: 1rem !important;
+    }
+  }
+}
