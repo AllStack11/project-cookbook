@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Framework**: Next.js 14 with App Router (TypeScript)
 - **Styling**: Tailwind CSS
-- **LLM Integration**: Claude API (Haiku for cost efficiency, Sonnet for complex extractions)
+- **LLM Integration**: DeepSeek API (deepseek-chat for cost efficiency, deepseek-reasoner for complex extractions)
 - **Content Extraction**:
   - `youtube-transcript` for YouTube videos
   - Cheerio/Puppeteer for web scraping
@@ -67,8 +67,8 @@ npm run type-check
    - Maximum token limit: 3,000 tokens input
 
 3. **Model Selection**:
-   - Use Claude Haiku (cheapest) for simple recipes
-   - Reserve Claude Sonnet for complex content
+   - Use deepseek-chat (cheapest) for simple recipes
+   - Reserve deepseek-reasoner for complex content
    - Fallback strategy: retry with better model if cheap model fails validation
 
 4. **Rate Limiting**:
@@ -203,9 +203,9 @@ Use the command `/log-update` to add entries to the work log, or manually edit W
 Required environment variables:
 
 ```bash
-# LLM API
-ANTHROPIC_API_KEY=           # Claude API key
-OPENAI_API_KEY=              # Optional: OpenAI fallback
+# LLM API - DeepSeek
+DEEPSEEK_API_KEY=            # DeepSeek API key
+DEEPSEEK_BASE_URL=           # DeepSeek API base URL (https://api.deepseek.com)
 
 # Caching
 REDIS_URL=                   # Redis connection string

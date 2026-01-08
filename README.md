@@ -5,7 +5,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 ## Features
 
 - **Multi-Source Support**: Extract recipes from YouTube, blogs, Instagram, TikTok, and more
-- **AI-Powered Extraction**: Uses Claude AI to intelligently parse recipe content
+- **AI-Powered Extraction**: Uses DeepSeek AI to intelligently parse recipe content
 - **Clean Output**: Structured recipe format with ingredients, instructions, and metadata
 - **Cost-Optimized**: Smart caching and token reduction strategies
 - **Rate Limited**: Free tier with 10 extractions per day
@@ -15,7 +15,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 
 - **Framework**: Next.js 14 with App Router (TypeScript)
 - **Styling**: Tailwind CSS
-- **LLM Integration**: Anthropic Claude API (Haiku for cost efficiency, Sonnet for complex extractions)
+- **LLM Integration**: DeepSeek API (deepseek-chat for cost efficiency, deepseek-reasoner for complex extractions)
 - **Content Extraction**: youtube-transcript, Cheerio
 - **Testing**: Jest + React Testing Library
 - **Hosting**: Vercel-ready (serverless functions + CDN)
@@ -25,7 +25,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Anthropic API key (sign up at https://www.anthropic.com)
+- DeepSeek API key (sign up at https://platform.deepseek.com)
 
 ### Installation
 
@@ -49,11 +49,9 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```bash
-# LLM API
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-
-# Optional: OpenAI fallback
-OPENAI_API_KEY=your_openai_api_key_here
+# LLM API - DeepSeek
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 # Caching (optional - in-memory by default)
 # REDIS_URL=redis://localhost:6379
@@ -107,7 +105,7 @@ npm run test:coverage # Run tests with coverage report
 
 /lib
   /extractors        # Content extraction (YouTube, web scraping)
-  /llm               # LLM integration (Anthropic client, prompts)
+  /llm               # LLM integration (DeepSeek client, prompts)
   /cache             # Caching layer
   /validators        # Input and recipe validation
   /utils             # Utility functions
@@ -126,7 +124,7 @@ npm run test:coverage # Run tests with coverage report
    - Text: Direct input
 3. **Preprocessing**: Reduce token count by 50-70% (remove ads, navigation, etc.)
 4. **Cache Check**: Look for cached recipe by URL
-5. **LLM Processing**: Send to Claude with structured prompt
+5. **LLM Processing**: Send to DeepSeek with structured prompt
 6. **Validation**: Verify recipe has required fields (2+ ingredients, 2+ steps)
 7. **Display**: Show formatted recipe with print/copy options
 
@@ -155,7 +153,7 @@ The app implements several cost-saving strategies:
 
 1. **Caching**: URL-based caching with 30-day TTL (blogs) / 7-day TTL (social media)
 2. **Token Reduction**: Strip ads, navigation, comments (50-70% reduction)
-3. **Model Selection**: Use Claude Haiku by default, upgrade to Sonnet only when needed
+3. **Model Selection**: Use deepseek-chat by default, upgrade to deepseek-reasoner only when needed
 4. **Rate Limiting**: Prevent abuse with 10 requests/day free tier
 
 ## Environment Variables
@@ -163,7 +161,8 @@ The app implements several cost-saving strategies:
 See [.env.example](.env.example) for all available environment variables.
 
 Required:
-- `ANTHROPIC_API_KEY`: Your Anthropic API key
+- `DEEPSEEK_API_KEY`: Your DeepSeek API key
+- `DEEPSEEK_BASE_URL`: DeepSeek API base URL (default: https://api.deepseek.com)
 
 Optional:
 - `REDIS_URL`: Redis connection for production caching

@@ -3,10 +3,10 @@ import { validateUrl } from '@/lib/validators/urlValidator';
 import { validateRecipe } from '@/lib/validators/recipeValidator';
 import { extractYoutubeTranscript } from '@/lib/extractors/youtubeExtractor';
 import { scrapeWebContent } from '@/lib/extractors/webScraper';
-import { extractRecipeWithAnthropic } from '@/lib/llm/anthropicClient';
+import { extractRecipeWithDeepSeek } from '@/lib/llm/deepseekClient';
 import { parseRecipeFromLLMResponse } from '@/lib/llm/responseParser';
 import { buildRecipeExtractionPrompt } from '@/lib/llm/promptBuilder';
-import { selectModel, shouldRetryWithBetterModel, CLAUDE_HAIKU } from '@/lib/llm/modelSelector';
+import { selectModel, shouldRetryWithBetterModel, DEEPSEEK_CHAT } from '@/lib/llm/modelSelector';
 import { getCachedRecipe, setCachedRecipe } from '@/lib/cache/cacheClient';
 import { checkRateLimit, incrementRateLimit } from '@/lib/utils/rateLimiter';
 import { ErrorCode, StatusCode } from '@/types/api';
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     // Call LLM
     let llmResponse;
     try {
-      llmResponse = await extractRecipeWithAnthropic(content, model);
+      llmResponse = await extractRecipeWithDeepSeek(content, model);
     } catch (error) {
       return NextResponse.json(
         {
@@ -159,16 +159,16 @@ export async function POST(request: NextRequest) {
     // Validate recipe
     const validation = validateRecipe(recipe);
     if (!validation.isValid) {
-      // Retry with better model if using Haiku
+      // Retry with better model if using basic chat model
       if (shouldRetryWithBetterModel(model, true)) {
         model = selectModel({
           contentLength: content.length,
           sourceType,
           isRetry: true,
-          previousModel: CLAUDE_HAIKU,
+          previousModel: DEEPSEEK_CHAT,
         });
 
-        const retryResponse = await extractRecipeWithAnthropic(content, model);
+        const retryResponse = await extractRecipeWithDeepSeek(content, model);
         const retryParseResult = parseRecipeFromLLMResponse(retryResponse.content);
 
         if (retryParseResult.success) {

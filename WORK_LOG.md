@@ -26,6 +26,70 @@ Each entry should include:
 
 ## Log Entries
 
+### 2026-01-08 - Migrated from Anthropic Claude to DeepSeek
+
+**Type**: Technical Decision - LLM Provider Migration
+**Description**: Switched LLM provider from Anthropic's Claude API to DeepSeek API
+
+**Changes Made**:
+
+1. **Dependencies**
+   - Replaced `@anthropic-ai/sdk` with `openai` package (v4.77.0)
+   - DeepSeek uses OpenAI-compatible API format
+
+2. **LLM Client** (`/lib/llm/deepseekClient.ts`)
+   - Created new DeepSeek client using OpenAI SDK
+   - Implemented same retry logic and error handling
+   - Functions: `getDeepSeekClient()`, `callDeepSeekWithRetry()`, `extractRecipeWithDeepSeek()`
+
+3. **Model Configuration** (`/lib/llm/modelSelector.ts`)
+   - Changed from Claude Haiku/Sonnet to DeepSeek models:
+     - `deepseek-chat`: Cost-efficient model for simple recipes
+     - `deepseek-reasoner`: Advanced model for complex content
+   - Maintained same fallback strategy (start cheap, upgrade if validation fails)
+
+4. **API Routes**
+   - Updated `/app/api/extract/route.ts` to use DeepSeek client
+   - All references to `extractRecipeWithAnthropic` → `extractRecipeWithDeepSeek`
+   - Updated model constants: `CLAUDE_HAIKU` → `DEEPSEEK_CHAT`
+
+5. **Environment Variables**
+   - `ANTHROPIC_API_KEY` → `DEEPSEEK_API_KEY`
+   - Added `DEEPSEEK_BASE_URL` (default: https://api.deepseek.com)
+   - Updated `.env.example`
+
+6. **Tests**
+   - Created `/tests/llm/deepseekClient.test.ts`
+   - Tests for API calls, retry logic, error handling
+   - Mock implementation using OpenAI SDK mocks
+
+7. **Documentation**
+   - Updated README.md with DeepSeek references
+   - Updated CLAUDE.md project guidelines
+   - Updated all LLM-related documentation
+
+**Rationale**:
+- DeepSeek offers competitive pricing for LLM inference
+- OpenAI-compatible API makes integration straightforward
+- Maintains same architecture patterns (retry, fallback, validation)
+- No changes required to prompt builder or response parser
+
+**Impact**:
+- **Cost**: Potentially lower inference costs with DeepSeek pricing
+- **Performance**: Similar quality with deepseek-chat and deepseek-reasoner models
+- **Architecture**: No structural changes, drop-in replacement
+- **User Experience**: No visible changes to end users
+- **Dependencies**: Reduced to single OpenAI SDK (smaller bundle size)
+
+**Testing Required**:
+1. Run `npm install` to update dependencies
+2. Set `DEEPSEEK_API_KEY` in `.env.local`
+3. Test recipe extraction with various sources
+4. Verify retry/fallback logic works correctly
+5. Run test suite: `npm test`
+
+---
+
 ### 2026-01-08 - Phase 1 MVP Skeleton Complete
 
 **Type**: Feature - Phase 1 MVP Implementation

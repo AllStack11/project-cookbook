@@ -1,5 +1,6 @@
-export const CLAUDE_HAIKU = 'claude-haiku-20240307';
-export const CLAUDE_SONNET = 'claude-3-5-sonnet-20241022';
+// DeepSeek models
+export const DEEPSEEK_CHAT = 'deepseek-chat';
+export const DEEPSEEK_REASONER = 'deepseek-reasoner';
 
 export interface ModelSelectionCriteria {
   contentLength: number;
@@ -9,24 +10,24 @@ export interface ModelSelectionCriteria {
 }
 
 export function selectModel(criteria: ModelSelectionCriteria): string {
-  // If this is a retry after Haiku failed, use Sonnet
-  if (criteria.isRetry && criteria.previousModel === CLAUDE_HAIKU) {
-    return CLAUDE_SONNET;
+  // If this is a retry after regular chat model failed, use reasoner
+  if (criteria.isRetry && criteria.previousModel === DEEPSEEK_CHAT) {
+    return DEEPSEEK_REASONER;
   }
 
-  // For very long content or complex sources, use Sonnet
+  // For very long content or complex sources, use reasoner model
   if (criteria.contentLength > 8000) {
-    return CLAUDE_SONNET;
+    return DEEPSEEK_REASONER;
   }
 
-  // Default to Haiku for cost optimization
-  return CLAUDE_HAIKU;
+  // Default to chat model for cost optimization
+  return DEEPSEEK_CHAT;
 }
 
 export function shouldRetryWithBetterModel(
   currentModel: string,
   validationFailed: boolean
 ): boolean {
-  // Only retry with a better model if we used Haiku and validation failed
-  return validationFailed && currentModel === CLAUDE_HAIKU;
+  // Only retry with reasoner if we used chat and validation failed
+  return validationFailed && currentModel === DEEPSEEK_CHAT;
 }
