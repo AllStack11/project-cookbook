@@ -13,7 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **LLM Integration**: Google Gemini API (gemini-2.5-flash-lite for cost efficiency and speed)
 - **Content Extraction**:
   - `youtube-transcript` for YouTube videos
-  - Cheerio/Puppeteer for web scraping
+  - Cheerio for web scraping
+  - `puppeteer-core` + `@sparticuz/chromium` for Instagram (Vercel-compatible)
 - **Payment**: Stripe for subscriptions
 - **Ads**: Google AdSense
 - **Hosting**: Vercel (serverless functions + CDN)
@@ -40,6 +41,10 @@ npm run lint
 
 # Run type checking
 npm run type-check
+
+# Deployment validation
+npm run validate-deploy    # Full pre-deployment checks
+npm run pre-deploy         # Type-check + lint + validate
 ```
 
 ## Architecture & Key Concepts
@@ -191,6 +196,137 @@ Always validate LLM extraction responses for:
 - Cache hit rate: 40-60%
 - Error rate: <5%
 - Conversion rate: 2-5% (free to paid)
+
+## Vercel Deployment
+
+### Prerequisites
+
+- Vercel account ([sign up](https://vercel.com))
+- GitHub repository connected
+- Google Gemini API key ([get here](https://aistudio.google.com/app/apikey))
+
+### Deployment Status: ✅ READY
+
+The project is **fully configured and tested** for Vercel deployment with:
+
+- ✅ **Puppeteer/Instagram Support**: Using `@sparticuz/chromium` + `puppeteer-core` (serverless-compatible)
+- ✅ **Pre-Deployment Validation**: Automated checks via `npm run validate-deploy`
+- ✅ **Vercel Configuration**: Optimized `vercel.json` with function timeouts and CORS
+- ✅ **Environment Variables**: Documented in `.env.example`
+- ✅ **Build Verification**: TypeScript + lint + build all passing
+- ✅ **Documentation**: Comprehensive guides in `DEPLOYMENT.md` and `DEPLOYMENT_CHECKLIST.md`
+
+### Quick Deploy (3 Steps)
+
+1. **Validate deployment readiness:**
+   ```bash
+   npm run validate-deploy
+   ```
+   Expected output: `✓ Project is ready for Vercel deployment!`
+
+2. **Push to GitHub:**
+   ```bash
+   git add .
+   git commit -m "feat: Deploy to Vercel"
+   git push origin main
+   ```
+
+3. **Deploy on Vercel:**
+   - Visit [vercel.com/new](https://vercel.com/new)
+   - Import your repository
+   - Add environment variables:
+     - `GEMINI_API_KEY` (required)
+     - `NEXT_PUBLIC_APP_URL` (your Vercel URL, e.g., `https://your-app.vercel.app`)
+     - `ENABLE_DEBUG_LOGGING=false` (for production)
+   - Click "Deploy"
+
+### Post-Deployment Setup
+
+**Highly Recommended:**
+
+1. **Set up Vercel KV for caching:**
+   - Go to Vercel dashboard → Storage → Create Database → KV
+   - Environment variables (`KV_REST_API_URL`, `KV_REST_API_TOKEN`) added automatically
+   - Redeploy to activate caching
+   - **Impact**: Reduces LLM API costs by 40-60%
+
+2. **Set up budget alerts:**
+   - Gemini: [Google AI Studio](https://aistudio.google.com) → Usage & Billing
+   - Vercel: Dashboard → Usage & Billing → Notifications
+   - Set alerts at comfortable thresholds
+
+3. **Monitor first 24 hours:**
+   - Check Vercel function logs for errors
+   - Verify cache hit rate in logs
+   - Monitor Gemini API usage
+   - Test all extraction sources (YouTube, blogs, Instagram)
+
+### Important Notes
+
+**Instagram Extraction:**
+- Now uses `@sparticuz/chromium` (Vercel-compatible)
+- Works in serverless environment
+- May have slightly longer cold starts on first request
+
+**Cost Optimization:**
+- Caching reduces API costs significantly
+- Target cache hit rate: 40-60%
+- Monitor token usage in first week
+- Consider implementing Vercel KV for persistent caching
+
+**Troubleshooting:**
+- Build fails: Check [DEPLOYMENT.md](DEPLOYMENT.md) troubleshooting section
+- Runtime errors: View Vercel function logs
+- Instagram issues: Verify `@sparticuz/chromium` is installed
+- High costs: Check cache hit rate and implement stricter rate limiting
+
+### Validation Script Details
+
+The pre-deployment validation script (`npm run validate-deploy`) checks:
+
+- ✅ Environment variables documented
+- ✅ Git configuration (no sensitive files tracked)
+- ✅ Package.json requirements
+- ✅ Next.js and Vercel configuration
+- ✅ TypeScript compilation
+- ✅ Build configuration validity
+- ✅ Deployment readiness
+
+**Exit codes:**
+- `0`: Ready to deploy (all checks passed)
+- `1`: Errors detected (fix before deploying)
+
+### Documentation
+
+For detailed instructions, see:
+
+- **[DEPLOYMENT.md](DEPLOYMENT.md)**: Complete deployment guide (300+ lines)
+  - Step-by-step Vercel setup
+  - Environment variables reference
+  - Vercel KV caching configuration
+  - Puppeteer/Instagram setup
+  - Cost monitoring and optimization
+  - Troubleshooting guide
+
+- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)**: Quick reference checklist
+  - Pre-deployment checks
+  - Post-deployment verification
+  - Monitoring tasks
+  - Emergency rollback
+
+- **[VERCEL_READY.md](VERCEL_READY.md)**: Summary of deployment readiness changes
+
+### Rollback
+
+If deployment has issues:
+
+```bash
+# Via Vercel CLI
+vercel rollback <previous-deployment-url>
+
+# Or via Vercel dashboard
+# Deployments → Previous deployment → "..." → Promote to Production
+```
 
 ## Work Log
 
