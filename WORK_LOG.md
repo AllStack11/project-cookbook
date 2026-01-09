@@ -28,13 +28,16 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-09**: Fix: Resolved Vercel deployment error "npm error Invalid Version".
+  - **Description**: Rewrote `package.json` to remove potentially hidden characters and explicitly set the Node.js engine version to `>=18.17.0`.
+  - **Impact**: Ensures compatibility with Vercel's build environment and resolves parsing issues during dependency installation.
+
 ### 2026-01-09 - Vercel Deployment Ready: Puppeteer Fix + Pre-Deploy Validation
 
 - **Type**: Deployment / Optimization / Tooling
 - **Description**: Completed comprehensive Vercel deployment preparation including Puppeteer serverless compatibility and automated deployment validation
 
   **Changes Made**:
-
   1. **Puppeteer Serverless Compatibility** ([lib/extractors/instagramExtractor.ts](lib/extractors/instagramExtractor.ts))
      - ❌ Removed incompatible `puppeteer` package (won't work on Vercel)
      - ✅ Installed `@sparticuz/chromium` (v143.0.4) + `puppeteer-core` (v24.34.0)
@@ -96,6 +99,7 @@ Each entry should include:
      - All dependencies up to date
 
 - **Validation Results**: ✅ All checks pass
+
   ```
   ✓ .env.example exists
   ✓ All required environment variables documented
@@ -114,14 +118,14 @@ Each entry should include:
 
 - **Before vs After**:
 
-  | Feature | Before | After |
-  |---------|--------|-------|
-  | **Puppeteer** | ❌ Won't work on Vercel | ✅ Vercel-compatible with @sparticuz/chromium |
-  | **Instagram Extraction** | ❌ Will fail in production | ✅ Works in serverless environment |
-  | **Pre-Deploy Validation** | ❌ Manual checks only | ✅ Automated validation script |
-  | **Build Verification** | ❌ No guarantee | ✅ Type-check + lint + validate |
-  | **Documentation** | ⚠️ Basic | ✅ Comprehensive guides (DEPLOYMENT.md, CHECKLIST, VERCEL_READY.md) |
-  | **Environment Vars** | ⚠️ Basic | ✅ Fully documented with links to get API keys |
+  | Feature                   | Before                     | After                                                               |
+  | ------------------------- | -------------------------- | ------------------------------------------------------------------- |
+  | **Puppeteer**             | ❌ Won't work on Vercel    | ✅ Vercel-compatible with @sparticuz/chromium                       |
+  | **Instagram Extraction**  | ❌ Will fail in production | ✅ Works in serverless environment                                  |
+  | **Pre-Deploy Validation** | ❌ Manual checks only      | ✅ Automated validation script                                      |
+  | **Build Verification**    | ❌ No guarantee            | ✅ Type-check + lint + validate                                     |
+  | **Documentation**         | ⚠️ Basic                   | ✅ Comprehensive guides (DEPLOYMENT.md, CHECKLIST, VERCEL_READY.md) |
+  | **Environment Vars**      | ⚠️ Basic                   | ✅ Fully documented with links to get API keys                      |
 
 - **Deployment Instructions**:
   1. Run `npm run validate-deploy` to verify readiness
