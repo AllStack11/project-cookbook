@@ -28,6 +28,209 @@ Each entry should include:
 
 ## Log Entries
 
+### 2026-01-09 - Quality Indicators: Confidence Score & Source Platform Badges
+
+- **Type**: Feature
+- **Description**: Implemented confidence score display and source platform badges to provide transparency and build trust with users
+
+  **Changes Made**:
+  1. **Extended Recipe Type** ([types/recipe.ts](types/recipe.ts))
+     - Added `confidenceScore?: number` (0-100 quality score)
+     - Added `sourcePlatform?: SourceType` (YouTube, Blog, Social Media, Text)
+     - Integrated with existing Recipe interface
+
+  2. **Confidence Score Calculation** ([lib/validators/recipeValidator.ts:260-334](lib/validators/recipeValidator.ts))
+     - Created `calculateConfidenceScore()` function with weighted scoring:
+       - **Title** (10 points): Recipe has valid title
+       - **Description** (5 points): Recipe has meaningful description (>20 chars)
+       - **Ingredients Quality** (25 points):
+         - Base 10 points for having ingredients
+         - Up to 15 bonus points for detailed ingredients with amounts/units
+       - **Instructions Quality** (25 points):
+         - Base 10 points for having instructions
+         - Up to 15 bonus points for detailed instructions (length-based)
+       - **Metadata Completeness** (20 points): servings, prepTime, cookTime, totalTime
+       - **Nutrition Data** (10 points): calories, protein, carbs, fat
+       - **Notes/Tips** (5 points): Chef's notes present
+       - **Deductions**: -15 for generated content, -10 for partial fallback
+     - Returns normalized score (0-100)
+
+  3. **API Integration** ([app/api/extract/route.ts](app/api/extract/route.ts))
+     - Calculate confidence score after validation passes
+     - Set `sourcePlatform` based on detected source type
+     - Applied to both LLM extraction and structured data bypass paths
+     - Included in recipe metadata before caching
+
+  4. **SourceBadge Component** ([app/components/SourceBadge/SourceBadge.tsx](app/components/SourceBadge/SourceBadge.tsx))
+     - Created reusable badge component with platform-specific styling:
+       - **YouTube**: Red theme with ▶️ icon
+       - **Blog**: Blue theme with 📝 icon
+       - **Social Media**: Purple theme with 📱 icon
+       - **Text Input**: Stone theme with 📄 icon
+     - Color-coded backgrounds, text, and borders
+     - Tooltip with full platform name
+
+  5. **RecipeCard Integration** ([app/components/RecipeCard/RecipeCard.tsx](app/components/RecipeCard/RecipeCard.tsx))
+     - **Confidence Score Badge** (lines 103-131):
+       - Displayed next to recipe title in header
+       - Color-coded by score range:
+         - 90-100%: Green (high quality)
+         - 75-89%: Blue (good quality)
+         - 60-74%: Yellow (acceptable quality)
+         - <60%: Orange (lower quality)
+       - Checkmark icon with "X% Accurate" label
+       - Tooltip explaining the score
+       - Backdrop blur for visibility over header image
+     - **Source Platform Badge** (lines 138-143):
+       - Displayed below description in header
+       - Platform-specific icon and color theme
+       - Consistent with dark header aesthetic
+
+- **Implementation Details**:
+  - **Confidence Algorithm**: Multi-factor weighted scoring emphasizes completeness and detail
+  - **Visual Design**: Color-coded badges with semantic meaning (green = excellent, red = caution)
+  - **User Trust**: Transparency about extraction quality helps users make informed decisions
+  - **Performance**: Score calculation is lightweight, runs after validation with no API calls
+
+- **Examples**:
+  - **High Score (95%)**: Recipe with all fields, detailed ingredients with amounts/units, long instructions, nutrition data
+  - **Medium Score (75%)**: Recipe with most fields, some ingredients missing amounts, moderate instruction detail
+  - **Low Score (55%)**: Recipe with basic ingredients/instructions, missing metadata or nutrition
+  - **Platform Badges**: YouTube videos show red ▶️ badge, blog posts show blue 📝 badge
+
+- **Impact**:
+  - **User Trust**: Confidence scores provide transparency about extraction quality
+  - **Source Recognition**: Platform badges help users identify content origin at a glance
+  - **Quality Feedback**: Users can gauge recipe completeness before cooking
+  - **Issue Reporting**: Low scores can prompt users to report problems (future feature)
+  - **Premium Differentiation**: Could be used to show premium extractions have higher accuracy
+  - **Analytics**: Score distribution helps track LLM extraction quality over time
+  - **No Cost**: Pure frontend display with backend calculation (no API calls)
+
+- **Technical Quality**:
+  - TypeScript type-safe throughout
+  - Reusable SourceBadge component
+  - Clean separation of concerns (calculation in validator, display in component)
+  - Responsive design (badges adapt to mobile/desktop)
+  - Print-friendly (badges visible in printed recipes)
+  - Accessible (tooltips provide context)
+
+---
+
+### 2026-01-09 - Serving Adjustment Feature
+
+- **Type**: Feature
+- **Description**: Implemented dynamic serving size adjustment with intelligent ingredient scaling in the RecipeCard component
+
+  **Changes Made**:
+  1. **Component State Management** ([app/components/RecipeCard/RecipeCard.tsx](app/components/RecipeCard/RecipeCard.tsx))
+     - Added `currentServings` state to track adjusted serving size
+     - Stores original servings for accurate ratio calculations
+     - Minimum serving size enforced at 1 person
+
+  2. **Serving Size Controls**
+     - Added +/- buttons next to servings display in recipe header
+     - Buttons styled consistently with existing UI (white/10 backdrop, rounded-lg)
+     - Disabled state for minus button when at minimum (1 serving)
+     - Print-friendly: buttons hidden in print mode
+     - Dynamic text: "Person" (singular) vs "People" (plural)
+
+  3. **Intelligent Ingredient Scaling**
+     - Created `scaleIngredient()` function with smart amount handling:
+       - Calculates ratio: `currentServings / originalServings`
+       - Parses numeric amounts and scales proportionally
+       - Handles non-numeric amounts gracefully (e.g., "to taste")
+       - Converts small decimals to Unicode fractions (¼, ⅓, ½, ⅔, ¾)
+       - Rounds larger amounts to appropriate precision
+       - Displays whole numbers without decimals
+     - Applied to both columns view and document view layouts
+
+  4. **Real-time Updates**
+     - Ingredient amounts update instantly when servings are adjusted
+     - Works seamlessly in both view modes (columns/document)
+     - Preserves original recipe data (non-destructive)
+     - Scaled ingredients recalculated on every render
+
+- **Implementation Details**:
+  - **Location**: [app/components/RecipeCard/RecipeCard.tsx](app/components/RecipeCard/RecipeCard.tsx)
+  - **Lines**: 13-68 (state & scaling logic), 110-128 (UI controls), 203-285 (columns view), 264-341 (document view)
+  - **State**: React `useState` hook for current vs original servings
+  - **Scaling Logic**: Handles whole numbers, decimals, and common fractions intelligently
+  - **Accessibility**: Added `aria-label` attributes to +/- buttons
+
+- **Examples**:
+  - Original recipe: 4 servings, "2 cups flour"
+    - Adjust to 8 servings → "4 cups flour"
+    - Adjust to 2 servings → "1 cups flour"
+    - Adjust to 1 serving → "½ cups flour" (displays as ½)
+  - Original recipe: 6 servings, "3 tablespoons oil"
+    - Adjust to 2 servings → "1 tablespoons oil"
+    - Adjust to 3 servings → "1.5 tablespoons oil"
+
+- **Impact**:
+  - **User Experience**: Users can now easily scale recipes to their desired portion size
+  - **Convenience**: No manual calculation needed for ingredient amounts
+  - **Flexibility**: Supports scaling from 1 person to any larger number
+  - **Print-friendly**: Scaled amounts are preserved when printing
+  - **Copy-friendly**: Ingredient scaling doesn't affect copy functionality (uses original amounts)
+
+- **Technical Quality**:
+  - TypeScript type-safe implementation
+  - No performance impact (lightweight calculations)
+  - Maintains existing functionality (print, copy, view modes)
+  - Clean, readable code with inline comments
+  - No external dependencies required
+
+---
+
+### 2026-01-09 - Migrated from DeepSeek to Google Gemini
+
+- **Type**: Migration / Optimization
+- **Description**: Completely replaced DeepSeek LLM provider with Google Gemini API
+
+  **Changes Made**:
+  1. **LLM Client** (`/lib/llm/geminiClient.ts`)
+     - Fixed thinking config bug: Only apply `thinkingConfig` to models that support it (gemini-2.5-flash-lite does NOT support thinking features)
+     - Conditionally apply thinking level based on model name (models with "thinking" in the name)
+
+  2. **Model Selection** (`/lib/llm/modelSelector.ts`)
+     - Removed `DEEPSEEK_CHAT` constant
+     - Simplified `selectModel()` to always return `GEMINI_FLASH` (gemini-2.5-flash-lite)
+     - Removed multi-model fallback logic (single model strategy)
+
+  3. **API Route** (`/app/api/extract/route.ts`)
+     - Removed all DeepSeek client imports and calls
+     - Simplified LLM call logic to only use Gemini
+     - Updated fallback logic to only use Gemini
+     - Updated all log messages to reference Gemini
+
+  4. **Environment Variables**
+     - Replaced `DEEPSEEK_API_KEY` and `DEEPSEEK_BASE_URL` with `GEMINI_API_KEY`
+     - Updated `.env.example` with Gemini configuration
+
+  5. **Documentation Updates**
+     - Updated `CLAUDE.md` with Gemini references and configuration
+     - Updated `README.md` with Gemini setup instructions
+     - Updated `.clinerules` to reference Gemini models
+
+  6. **File Cleanup**
+     - Deleted `/lib/llm/deepseekClient.ts`
+     - Deleted `/__tests__/llm/deepseekClient.test.ts`
+
+- **Rationale**:
+  - Gemini offers native JSON schema support for structured outputs
+  - Competitive pricing with gemini-2.5-flash-lite
+  - Better integration with Google ecosystem
+  - Simplified codebase with single LLM provider
+
+- **Impact**:
+  - **Performance**: Gemini Flash is optimized for speed and efficiency
+  - **Cost**: Competitive pricing, especially with structured output support
+  - **Reliability**: Single provider reduces complexity and potential points of failure
+  - **Developer Experience**: Cleaner codebase with one LLM integration path
+
+---
+
 - **2026-01-08: Monetization: Integrated Google AdSense and Ad Placeholders**
   - **Type**: Feature
   - **Description**: Implemented the foundation for ad-based monetization.

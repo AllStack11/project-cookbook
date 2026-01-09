@@ -10,14 +10,14 @@ export interface UrlValidationResult {
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
 const YOUTUBE_ID_REGEX = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
 
-const SOCIAL_MEDIA_DOMAINS = [
-  'instagram.com',
-  'tiktok.com',
-  'twitter.com',
-  'x.com',
-  'facebook.com',
-  'pinterest.com',
-];
+const SOCIAL_MEDIA_PLATFORMS = {
+  INSTAGRAM: ['instagram.com'],
+  TIKTOK: ['tiktok.com'],
+  TWITTER: ['twitter.com', 'x.com'],
+  FACEBOOK: ['facebook.com', 'fb.com', 'fb.watch'],
+  PINTEREST: ['pinterest.com', 'pin.it'],
+  REDDIT: ['reddit.com', 'redd.it'],
+};
 
 export function validateUrl(url: string): UrlValidationResult {
   if (!url || url.trim().length === 0) {
@@ -61,15 +61,55 @@ export function validateUrl(url: string): UrlValidationResult {
     };
   }
 
-  // Detect social media
+  // Detect specific social media platforms
   const hostname = parsedUrl.hostname.toLowerCase();
-  for (const domain of SOCIAL_MEDIA_DOMAINS) {
-    if (hostname.includes(domain)) {
-      return {
-        isValid: true,
-        sourceType: SourceType.SOCIAL_MEDIA,
-      };
-    }
+
+  // Check Instagram
+  if (SOCIAL_MEDIA_PLATFORMS.INSTAGRAM.some(domain => hostname.includes(domain))) {
+    return {
+      isValid: true,
+      sourceType: SourceType.INSTAGRAM,
+    };
+  }
+
+  // Check TikTok
+  if (SOCIAL_MEDIA_PLATFORMS.TIKTOK.some(domain => hostname.includes(domain))) {
+    return {
+      isValid: true,
+      sourceType: SourceType.TIKTOK,
+    };
+  }
+
+  // Check Twitter/X
+  if (SOCIAL_MEDIA_PLATFORMS.TWITTER.some(domain => hostname.includes(domain))) {
+    return {
+      isValid: true,
+      sourceType: SourceType.TWITTER,
+    };
+  }
+
+  // Check Facebook
+  if (SOCIAL_MEDIA_PLATFORMS.FACEBOOK.some(domain => hostname.includes(domain))) {
+    return {
+      isValid: true,
+      sourceType: SourceType.FACEBOOK,
+    };
+  }
+
+  // Check Pinterest
+  if (SOCIAL_MEDIA_PLATFORMS.PINTEREST.some(domain => hostname.includes(domain))) {
+    return {
+      isValid: true,
+      sourceType: SourceType.PINTEREST,
+    };
+  }
+
+  // Check Reddit
+  if (SOCIAL_MEDIA_PLATFORMS.REDDIT.some(domain => hostname.includes(domain))) {
+    return {
+      isValid: true,
+      sourceType: SourceType.REDDIT,
+    };
   }
 
   // Default to blog
@@ -92,7 +132,11 @@ export function isSocialMediaUrl(url: string): boolean {
   try {
     const parsedUrl = new URL(url);
     const hostname = parsedUrl.hostname.toLowerCase();
-    return SOCIAL_MEDIA_DOMAINS.some(domain => hostname.includes(domain));
+
+    // Check if URL matches any social media platform
+    return Object.values(SOCIAL_MEDIA_PLATFORMS).some(domains =>
+      domains.some(domain => hostname.includes(domain))
+    );
   } catch {
     return false;
   }

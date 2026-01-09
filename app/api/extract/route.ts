@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateUrl } from "@/lib/validators/urlValidator";
-import { validateRecipe } from "@/lib/validators/recipeValidator";
+import {
+  validateRecipe,
+  calculateConfidenceScore,
+} from "@/lib/validators/recipeValidator";
 import {
   extractYoutubeTranscript,
   extractYoutubeDescription,
 } from "@/lib/extractors/youtubeExtractor";
-import { extractRecipeWithDeepSeek } from "@/lib/llm/deepseekClient";
 import { extractRecipeWithGemini } from "@/lib/llm/geminiClient";
 import { parseRecipeFromLLMResponse } from "@/lib/llm/responseParser";
 import {
   buildRecipeExtractionPrompt,
   buildFallbackPrompt,
 } from "@/lib/llm/promptBuilder";
-import { selectModel, GEMINI_FLASH } from "@/lib/llm/modelSelector";
+import { selectModel } from "@/lib/llm/modelSelector";
 import { getCachedRecipe, setCachedRecipe } from "@/lib/cache/cacheClient";
 import {
   checkRateLimit,
@@ -245,6 +247,11 @@ export async function POST(request: NextRequest) {
           ) {
             logger.info("🚀 LLM BYPASS - Using high-quality structured data");
             const recipe = result.recipe;
+
+            // Calculate confidence score and set source platform
+            recipe.confidenceScore = calculateConfidenceScore(recipe);
+            recipe.sourcePlatform = sourceType;
+
             await setCachedRecipe(url, recipe);
             await incrementRateLimit(ip);
 
@@ -331,24 +338,14 @@ export async function POST(request: NextRequest) {
       estimatedInputTokens: Math.ceil(prompt.length / 4),
     });
 
-    // Call LLM
-    const isGemini = model === GEMINI_FLASH;
-    logger.info(`⏳ Calling ${isGemini ? "Gemini" : "DeepSeek"} API...`, {
-      model,
-    });
+    // Call LLM (Gemini only)
+    logger.info(`⏳ Calling Gemini API...`, { model });
     const llmStart = Date.now();
     let llmResponse;
     try {
-      if (isGemini) {
-        llmResponse = await extractRecipeWithGemini(content, prompt, model);
-      } else {
-        llmResponse = await extractRecipeWithDeepSeek(content, model);
-      }
+      llmResponse = await extractRecipeWithGemini(content, prompt, model);
       const llmDuration = Date.now() - llmStart;
-      logger.perf(
-        `🚀 ${isGemini ? "Gemini" : "DeepSeek"} API call`,
-        llmDuration
-      );
+      logger.perf(`🚀 Gemini API call`, llmDuration);
       logger.info("LLM response received", {
         tokensUsed: llmResponse.tokensUsed,
         responseLength: llmResponse.content.length,
@@ -356,7 +353,7 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       const llmDuration = Date.now() - llmStart;
-      logger.error("❌ DeepSeek API call failed", {
+      logger.error("❌ Gemini API call failed", {
         error,
         duration: llmDuration,
       });
@@ -419,22 +416,13 @@ export async function POST(request: NextRequest) {
         missingFields
       );
 
-      logger.info("⏳ Calling fallback LLM generation...");
+      logger.info("⏳ Calling fallback Gemini generation...");
       try {
-        let fallbackResponse;
-        if (isGemini) {
-          fallbackResponse = await extractRecipeWithGemini(
-            content,
-            fallbackPrompt,
-            model
-          );
-        } else {
-          fallbackResponse = await extractRecipeWithDeepSeek(
-            content, // Pass content as context
-            model,
-            fallbackPrompt
-          );
-        }
+        const fallbackResponse = await extractRecipeWithGemini(
+          content,
+          fallbackPrompt,
+          model
+        );
 
         const fallbackParseResult = parseRecipeFromLLMResponse(
           fallbackResponse.content
@@ -461,6 +449,14 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info("✓ Recipe validation passed");
+
+    // Calculate confidence score
+    recipe.confidenceScore = calculateConfidenceScore(recipe);
+    recipe.sourcePlatform = sourceType;
+    logger.info("Confidence score calculated", {
+      score: recipe.confidenceScore,
+      sourcePlatform: sourceType,
+    });
 
     // Cache the result if from URL
     if (sourceUrl) {

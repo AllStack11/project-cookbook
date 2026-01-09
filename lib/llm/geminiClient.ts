@@ -111,21 +111,27 @@ export async function extractRecipeWithGemini(
   try {
     const genAI = getGeminiClient();
 
-    // Determine thinking level based on content length or source (simplified for now)
-    // For messy transcripts, we want higher reasoning
-    const thinkingLevel = content.length > 2000 ? "high" : "low";
+    // Only thinking/reasoning models support thinkingConfig
+    // gemini-2.5-flash-lite does NOT support thinking features
+    const supportsThinking = modelName.includes("thinking");
+
+    const generationConfig: any = {
+      responseMimeType: "application/json",
+      responseSchema: recipeSchema,
+      temperature: 1.0, // Recommended for Gemini 3
+    };
+
+    // Only add thinkingConfig for models that support it
+    if (supportsThinking) {
+      const thinkingLevel = content.length > 2000 ? "high" : "low";
+      generationConfig.thinkingConfig = {
+        thinkingLevel: thinkingLevel,
+      };
+    }
 
     const model = genAI.getGenerativeModel({
       model: modelName,
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: recipeSchema,
-        temperature: 1.0, // Recommended for Gemini 3
-        // @ts-ignore - thinkingConfig might not be in types yet but is supported by the API
-        thinkingConfig: {
-          thinkingLevel: thinkingLevel,
-        },
-      },
+      generationConfig,
     });
 
     const result = await model.generateContent(prompt);

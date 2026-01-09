@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Recipe } from "@/types/recipe";
 import AdBanner from "../AdBanner/AdBanner";
+import SourceBadge from "../SourceBadge/SourceBadge";
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -10,6 +11,8 @@ interface RecipeCardProps {
 
 export default function RecipeCard({ recipe }: RecipeCardProps) {
   const [viewMode, setViewMode] = useState<"columns" | "document">("columns");
+  const [currentServings, setCurrentServings] = useState(recipe.servings || 4);
+  const originalServings = recipe.servings || 4;
 
   const handlePrint = () => {
     window.print();
@@ -20,6 +23,50 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
     await navigator.clipboard.writeText(recipeText);
     alert("Recipe copied to clipboard!");
   };
+
+  const adjustServings = (delta: number) => {
+    setCurrentServings((prev) => Math.max(1, prev + delta));
+  };
+
+  const scaleIngredient = (ingredient: typeof recipe.ingredients[0]) => {
+    if (!ingredient.amount) return ingredient;
+
+    const ratio = currentServings / originalServings;
+    const originalAmount = parseFloat(ingredient.amount);
+
+    if (isNaN(originalAmount)) {
+      return ingredient;
+    }
+
+    const scaledAmount = originalAmount * ratio;
+
+    // Handle fractions nicely
+    let displayAmount: string;
+    if (scaledAmount % 1 === 0) {
+      displayAmount = scaledAmount.toString();
+    } else if (scaledAmount < 1) {
+      // Convert to fractions for small amounts
+      const fraction = scaledAmount;
+      if (Math.abs(fraction - 0.25) < 0.05) displayAmount = "¼";
+      else if (Math.abs(fraction - 0.33) < 0.05) displayAmount = "⅓";
+      else if (Math.abs(fraction - 0.5) < 0.05) displayAmount = "½";
+      else if (Math.abs(fraction - 0.67) < 0.05) displayAmount = "⅔";
+      else if (Math.abs(fraction - 0.75) < 0.05) displayAmount = "¾";
+      else displayAmount = scaledAmount.toFixed(2);
+    } else {
+      // For larger amounts, round to reasonable precision
+      displayAmount = scaledAmount % 1 < 0.1 || scaledAmount % 1 > 0.9
+        ? Math.round(scaledAmount).toString()
+        : scaledAmount.toFixed(1);
+    }
+
+    return {
+      ...ingredient,
+      amount: displayAmount,
+    };
+  };
+
+  const scaledIngredients = recipe.ingredients.map(scaleIngredient);
 
   return (
     <div className="w-full max-w-4xl mx-auto card-modern !p-0 overflow-hidden print:shadow-none print:border-none">
@@ -53,9 +100,15 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 {recipe.title}
               </h1>
               {recipe.description && (
-                <p className="text-stone-400 text-lg leading-relaxed max-w-2xl font-medium">
+                <p className="text-stone-400 text-lg leading-relaxed max-w-2xl font-medium mb-4">
                   {recipe.description}
                 </p>
+              )}
+              {recipe.sourcePlatform && (
+                <SourceBadge
+                  sourcePlatform={recipe.sourcePlatform}
+                  className="backdrop-blur-md bg-white/10 border-white/20"
+                />
               )}
             </div>
             <div className="flex flex-wrap gap-3 print:hidden">
@@ -106,8 +159,25 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
                   Servings
                 </div>
-                <div className="text-xl font-bold">
-                  {recipe.servings} People
+                <div className="flex items-center gap-3 print:gap-0">
+                  <button
+                    onClick={() => adjustServings(-1)}
+                    disabled={currentServings <= 1}
+                    className="print:hidden w-8 h-8 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center text-white font-bold transition-all border border-white/10"
+                    aria-label="Decrease servings"
+                  >
+                    −
+                  </button>
+                  <div className="text-xl font-bold min-w-[60px] text-center">
+                    {currentServings} {currentServings === 1 ? "Person" : "People"}
+                  </div>
+                  <button
+                    onClick={() => adjustServings(1)}
+                    className="print:hidden w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white font-bold transition-all border border-white/10"
+                    aria-label="Increase servings"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             )}
@@ -200,7 +270,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 Ingredients
               </h2>
               <ul className="space-y-4">
-                {recipe.ingredients.map((ingredient, index) => (
+                {scaledIngredients.map((ingredient, index) => (
                   <li
                     key={index}
                     className="flex items-start group pb-4 border-b border-stone-50 last:border-0"
@@ -261,7 +331,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 Ingredients
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                {recipe.ingredients.map((ingredient, index) => (
+                {scaledIngredients.map((ingredient, index) => (
                   <div key={index} className="flex items-center gap-3">
                     <span className="text-lg flex-shrink-0">
                       {getIngredientEmoji(ingredient.item)}
@@ -385,34 +455,59 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           </div>
         )}
 
-        {/* Source Link */}
-        {recipe.sourceUrl && (
-          <div className="mt-12 pt-8 border-t border-stone-100 text-sm text-stone-400 font-medium flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                />
-              </svg>
-              Extracted from:{" "}
-              <a
-                href={recipe.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-700 underline underline-offset-4 decoration-primary-200"
-              >
-                {recipe.sourceUrl}
-              </a>
+        {/* Source Link and Footer */}
+        {(recipe.sourceUrl || recipe.confidenceScore !== undefined) && (
+          <div className="mt-12 pt-8 border-t border-stone-100">
+            {recipe.sourceUrl && (
+              <div className="text-sm text-stone-400 font-medium flex items-center gap-2 mb-3">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+                Extracted from:{" "}
+                <a
+                  href={recipe.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 hover:text-primary-700 underline underline-offset-4 decoration-primary-200"
+                >
+                  {recipe.sourceUrl}
+                </a>
+              </div>
+            )}
+            <div className="flex items-center justify-between flex-wrap gap-4 text-xs text-stone-400">
+              {recipe.confidenceScore !== undefined && (
+                <div
+                  className="flex items-center gap-1.5"
+                  title="Extraction quality score based on completeness and detail"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span>Quality score: {recipe.confidenceScore}%</span>
+                </div>
+              )}
+              <div className="print:hidden">Enjoy your meal! ✨</div>
             </div>
-            <div className="print:hidden">Enjoy your meal! ✨</div>
           </div>
         )}
       </div>
@@ -428,6 +523,7 @@ function getIngredientEmoji(item: string): string {
   if (
     lowercaseItem.includes("beef") ||
     lowercaseItem.includes("steak") ||
+    lowercaseItem.includes("steaks") ||
     lowercaseItem.includes("ground meat")
   )
     return "🥩";
@@ -435,11 +531,14 @@ function getIngredientEmoji(item: string): string {
     lowercaseItem.includes("pork") ||
     lowercaseItem.includes("bacon") ||
     lowercaseItem.includes("ham") ||
-    lowercaseItem.includes("sausage")
+    lowercaseItem.includes("hams") ||
+    lowercaseItem.includes("sausage") ||
+    lowercaseItem.includes("sausages")
   )
     return "🥓";
   if (
     lowercaseItem.includes("fish") ||
+    lowercaseItem.includes("fishes") ||
     lowercaseItem.includes("salmon") ||
     lowercaseItem.includes("tuna") ||
     lowercaseItem.includes("cod")
@@ -447,9 +546,13 @@ function getIngredientEmoji(item: string): string {
     return "🐟";
   if (
     lowercaseItem.includes("shrimp") ||
+    lowercaseItem.includes("shrimps") ||
     lowercaseItem.includes("prawn") ||
+    lowercaseItem.includes("prawns") ||
     lowercaseItem.includes("crab") ||
-    lowercaseItem.includes("lobster")
+    lowercaseItem.includes("crabs") ||
+    lowercaseItem.includes("lobster") ||
+    lowercaseItem.includes("lobsters")
   )
     return "🍤";
   if (lowercaseItem.includes("egg")) return "🥚";
@@ -465,35 +568,52 @@ function getIngredientEmoji(item: string): string {
   // Vegetables
   if (
     lowercaseItem.includes("onion") ||
+    lowercaseItem.includes("onions") ||
     lowercaseItem.includes("shallot") ||
-    lowercaseItem.includes("leek")
+    lowercaseItem.includes("shallots") ||
+    lowercaseItem.includes("leek") ||
+    lowercaseItem.includes("leeks")
   )
     return "🧅";
   if (lowercaseItem.includes("garlic")) return "🧄";
-  if (lowercaseItem.includes("tomato")) return "🍅";
+  if (lowercaseItem.includes("tomato") || lowercaseItem.includes("tomatoes"))
+    return "🍅";
   if (
     lowercaseItem.includes("potato") ||
+    lowercaseItem.includes("potatoes") ||
     lowercaseItem.includes("yam") ||
-    lowercaseItem.includes("sweet potato")
+    lowercaseItem.includes("yams") ||
+    lowercaseItem.includes("sweet potato") ||
+    lowercaseItem.includes("sweet potatoes")
   )
     return "🥔";
-  if (lowercaseItem.includes("carrot")) return "🥕";
+  if (lowercaseItem.includes("carrot") || lowercaseItem.includes("carrots"))
+    return "🥕";
   if (
     lowercaseItem.includes("broccoli") ||
-    lowercaseItem.includes("cauliflower")
+    lowercaseItem.includes("cauliflower") ||
+    lowercaseItem.includes("cauliflowers")
   )
     return "🥦";
   if (
     lowercaseItem.includes("pepper") ||
+    lowercaseItem.includes("peppers") ||
     lowercaseItem.includes("chili") ||
+    lowercaseItem.includes("chilis") ||
+    lowercaseItem.includes("chilies") ||
     lowercaseItem.includes("jalapeno") ||
-    lowercaseItem.includes("capsicum")
+    lowercaseItem.includes("jalapenos") ||
+    lowercaseItem.includes("capsicum") ||
+    lowercaseItem.includes("capsicums")
   )
     return "🌶️";
   if (
     lowercaseItem.includes("cucumber") ||
+    lowercaseItem.includes("cucumbers") ||
     lowercaseItem.includes("pickle") ||
-    lowercaseItem.includes("zucchini")
+    lowercaseItem.includes("pickles") ||
+    lowercaseItem.includes("zucchini") ||
+    lowercaseItem.includes("zucchinis")
   )
     return "🥒";
   if (
@@ -501,32 +621,47 @@ function getIngredientEmoji(item: string): string {
     lowercaseItem.includes("spinach") ||
     lowercaseItem.includes("kale") ||
     lowercaseItem.includes("chard") ||
+    lowercaseItem.includes("chards") ||
     lowercaseItem.includes("arugula")
   )
     return "🥬";
   if (lowercaseItem.includes("corn") || lowercaseItem.includes("maize"))
     return "🌽";
-  if (lowercaseItem.includes("mushroom") || lowercaseItem.includes("fungus"))
+  if (
+    lowercaseItem.includes("mushroom") ||
+    lowercaseItem.includes("mushrooms") ||
+    lowercaseItem.includes("fungus")
+  )
     return "🍄";
-  if (lowercaseItem.includes("avocado")) return "🥑";
+  if (lowercaseItem.includes("avocado") || lowercaseItem.includes("avocados"))
+    return "🥑";
   if (
     lowercaseItem.includes("lemon") ||
+    lowercaseItem.includes("lemons") ||
     lowercaseItem.includes("lime") ||
+    lowercaseItem.includes("limes") ||
     lowercaseItem.includes("citrus")
   )
     return "🍋";
-  if (lowercaseItem.includes("eggplant")) return "🍆";
+  if (lowercaseItem.includes("eggplant") || lowercaseItem.includes("eggplants"))
+    return "🍆";
   if (
     lowercaseItem.includes("pea") ||
+    lowercaseItem.includes("peas") ||
     lowercaseItem.includes("bean") ||
+    lowercaseItem.includes("beans") ||
     lowercaseItem.includes("lentil") ||
-    lowercaseItem.includes("chickpea")
+    lowercaseItem.includes("lentils") ||
+    lowercaseItem.includes("chickpea") ||
+    lowercaseItem.includes("chickpeas")
   )
     return "🫛";
   if (lowercaseItem.includes("asparagus")) return "🎍";
-  if (lowercaseItem.includes("cabbage")) return "🥗";
+  if (lowercaseItem.includes("cabbage") || lowercaseItem.includes("cabbages"))
+    return "🥗";
   if (
     lowercaseItem.includes("herb") ||
+    lowercaseItem.includes("herbs") ||
     lowercaseItem.includes("parsley") ||
     lowercaseItem.includes("cilantro") ||
     lowercaseItem.includes("basil") ||
@@ -537,25 +672,53 @@ function getIngredientEmoji(item: string): string {
   if (lowercaseItem.includes("ginger")) return "🫚";
 
   // Fruits
-  if (lowercaseItem.includes("apple")) return "🍎";
-  if (lowercaseItem.includes("banana")) return "🍌";
+  if (lowercaseItem.includes("apple") || lowercaseItem.includes("apples"))
+    return "🍎";
+  if (lowercaseItem.includes("banana") || lowercaseItem.includes("bananas"))
+    return "🍌";
+  if (
+    lowercaseItem.includes("blueberry") ||
+    lowercaseItem.includes("blueberries")
+  )
+    return "🫐";
   if (
     lowercaseItem.includes("strawberry") ||
+    lowercaseItem.includes("strawberries") ||
     lowercaseItem.includes("berry") ||
-    lowercaseItem.includes("blueberry") ||
-    lowercaseItem.includes("raspberry")
+    lowercaseItem.includes("berries") ||
+    lowercaseItem.includes("raspberry") ||
+    lowercaseItem.includes("raspberries")
   )
     return "🍓";
-  if (lowercaseItem.includes("grape") || lowercaseItem.includes("raisin"))
+  if (
+    lowercaseItem.includes("grape") ||
+    lowercaseItem.includes("grapes") ||
+    lowercaseItem.includes("raisin") ||
+    lowercaseItem.includes("raisins")
+  )
     return "🍇";
-  if (lowercaseItem.includes("orange") || lowercaseItem.includes("tangerine"))
+  if (
+    lowercaseItem.includes("orange") ||
+    lowercaseItem.includes("oranges") ||
+    lowercaseItem.includes("tangerine") ||
+    lowercaseItem.includes("tangerines")
+  )
     return "🍊";
-  if (lowercaseItem.includes("pineapple")) return "🍍";
-  if (lowercaseItem.includes("mango")) return "🥭";
-  if (lowercaseItem.includes("peach")) return "🍑";
-  if (lowercaseItem.includes("cherry")) return "🍒";
-  if (lowercaseItem.includes("coconut")) return "🥥";
-  if (lowercaseItem.includes("olive")) return "🫒";
+  if (
+    lowercaseItem.includes("pineapple") ||
+    lowercaseItem.includes("pineapples")
+  )
+    return "🍍";
+  if (lowercaseItem.includes("mango") || lowercaseItem.includes("mangos") || lowercaseItem.includes("mangoes"))
+    return "🥭";
+  if (lowercaseItem.includes("peach") || lowercaseItem.includes("peaches"))
+    return "🍑";
+  if (lowercaseItem.includes("cherry") || lowercaseItem.includes("cherries"))
+    return "🍒";
+  if (lowercaseItem.includes("coconut") || lowercaseItem.includes("coconuts"))
+    return "🥥";
+  if (lowercaseItem.includes("olive") || lowercaseItem.includes("olives"))
+    return "🫒";
 
   // Dairy & Alternatives
   if (
@@ -580,6 +743,7 @@ function getIngredientEmoji(item: string): string {
   // Pantry & Others
   if (
     lowercaseItem.includes("flour") ||
+    lowercaseItem.includes("flours") ||
     lowercaseItem.includes("baking powder") ||
     lowercaseItem.includes("baking soda") ||
     lowercaseItem.includes("yeast")
@@ -587,11 +751,14 @@ function getIngredientEmoji(item: string): string {
     return "🥡";
   if (
     lowercaseItem.includes("sugar") ||
+    lowercaseItem.includes("sugars") ||
     lowercaseItem.includes("sweetener") ||
+    lowercaseItem.includes("sweeteners") ||
     lowercaseItem.includes("stevia")
   )
     return "🍬";
-  if (lowercaseItem.includes("salt")) return "🧂";
+  if (lowercaseItem.includes("salt") || lowercaseItem.includes("salts"))
+    return "🧂";
   if (
     lowercaseItem.includes("pepper") &&
     !lowercaseItem.includes("bell pepper")
@@ -599,6 +766,7 @@ function getIngredientEmoji(item: string): string {
     return "🧂"; // Use salt shaker for black pepper too
   if (
     lowercaseItem.includes("spice") ||
+    lowercaseItem.includes("spices") ||
     lowercaseItem.includes("cinnamon") ||
     lowercaseItem.includes("paprika") ||
     lowercaseItem.includes("cumin") ||
@@ -607,8 +775,11 @@ function getIngredientEmoji(item: string): string {
     return "🏺";
   if (
     lowercaseItem.includes("oil") ||
+    lowercaseItem.includes("oils") ||
     lowercaseItem.includes("vinegar") ||
+    lowercaseItem.includes("vinegars") ||
     lowercaseItem.includes("sauce") ||
+    lowercaseItem.includes("sauces") ||
     lowercaseItem.includes("soy sauce") ||
     lowercaseItem.includes("ketchup") ||
     lowercaseItem.includes("mustard")
@@ -616,14 +787,20 @@ function getIngredientEmoji(item: string): string {
     return "🫗";
   if (
     lowercaseItem.includes("bread") ||
+    lowercaseItem.includes("breads") ||
     lowercaseItem.includes("toast") ||
+    lowercaseItem.includes("toasts") ||
     lowercaseItem.includes("bun") ||
-    lowercaseItem.includes("baguette")
+    lowercaseItem.includes("buns") ||
+    lowercaseItem.includes("baguette") ||
+    lowercaseItem.includes("baguettes")
   )
     return "🍞";
   if (
     lowercaseItem.includes("pasta") ||
+    lowercaseItem.includes("pastas") ||
     lowercaseItem.includes("noodle") ||
+    lowercaseItem.includes("noodles") ||
     lowercaseItem.includes("spaghetti") ||
     lowercaseItem.includes("macaroni")
   )
@@ -631,47 +808,69 @@ function getIngredientEmoji(item: string): string {
   if (
     lowercaseItem.includes("rice") ||
     lowercaseItem.includes("quinoa") ||
-    lowercaseItem.includes("grain")
+    lowercaseItem.includes("grain") ||
+    lowercaseItem.includes("grains")
   )
     return "🍚";
   if (
     lowercaseItem.includes("water") ||
     lowercaseItem.includes("juice") ||
+    lowercaseItem.includes("juices") ||
     lowercaseItem.includes("broth") ||
+    lowercaseItem.includes("broths") ||
     lowercaseItem.includes("stock") ||
+    lowercaseItem.includes("stocks") ||
     lowercaseItem.includes("wine") ||
-    lowercaseItem.includes("beer")
+    lowercaseItem.includes("wines") ||
+    lowercaseItem.includes("beer") ||
+    lowercaseItem.includes("beers")
   )
     return "💧";
   if (
     lowercaseItem.includes("honey") ||
     lowercaseItem.includes("syrup") ||
+    lowercaseItem.includes("syrups") ||
     lowercaseItem.includes("maple")
   )
     return "🍯";
   if (
     lowercaseItem.includes("chocolate") ||
+    lowercaseItem.includes("chocolates") ||
     lowercaseItem.includes("cocoa") ||
-    lowercaseItem.includes("chip")
+    lowercaseItem.includes("chip") ||
+    lowercaseItem.includes("chips")
   )
     return "🍫";
   if (
     lowercaseItem.includes("nut") ||
+    lowercaseItem.includes("nuts") ||
     lowercaseItem.includes("almond") ||
+    lowercaseItem.includes("almonds") ||
     lowercaseItem.includes("walnut") ||
+    lowercaseItem.includes("walnuts") ||
     lowercaseItem.includes("cashew") ||
+    lowercaseItem.includes("cashews") ||
     lowercaseItem.includes("peanut") ||
+    lowercaseItem.includes("peanuts") ||
     lowercaseItem.includes("seed") ||
+    lowercaseItem.includes("seeds") ||
     lowercaseItem.includes("sesame") ||
     lowercaseItem.includes("sunflower")
   )
     return "🥜";
-  if (lowercaseItem.includes("vanilla") || lowercaseItem.includes("extract"))
+  if (
+    lowercaseItem.includes("vanilla") ||
+    lowercaseItem.includes("extract") ||
+    lowercaseItem.includes("extracts")
+  )
     return "🧪";
   if (
     lowercaseItem.includes("jam") ||
+    lowercaseItem.includes("jams") ||
     lowercaseItem.includes("jelly") ||
-    lowercaseItem.includes("preserve")
+    lowercaseItem.includes("jellies") ||
+    lowercaseItem.includes("preserve") ||
+    lowercaseItem.includes("preserves")
   )
     return "🍯";
 

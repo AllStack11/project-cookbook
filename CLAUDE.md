@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Framework**: Next.js 14 with App Router (TypeScript)
 - **Styling**: Tailwind CSS
-- **LLM Integration**: DeepSeek API (deepseek-chat for cost efficiency, deepseek-reasoner for complex extractions)
+- **LLM Integration**: Google Gemini API (gemini-2.5-flash-lite for cost efficiency and speed)
 - **Content Extraction**:
   - `youtube-transcript` for YouTube videos
   - Cheerio/Puppeteer for web scraping
@@ -68,9 +68,9 @@ npm run type-check
    - Maximum token limit: 3,000 tokens input
 
 3. **Model Selection**:
-   - Use deepseek-chat (cheapest) for simple recipes
-   - Reserve deepseek-reasoner for complex content
-   - Fallback strategy: retry with better model if cheap model fails validation
+   - Currently using gemini-2.5-flash-lite for all extractions
+   - Gemini offers competitive pricing with structured output support
+   - Future: Consider gemini-2.0-flash-thinking-exp for complex content requiring reasoning
 
 4. **Rate Limiting**:
    - Free tier: 10 extractions/day per IP
@@ -204,17 +204,16 @@ Update the work log when:
 - Implementing cost optimizations
 - Changing LLM prompts or model selection
 - Deploying to production
-
-Use the command `/log-update` to add entries to the work log, or manually edit WORK_LOG.md.
+  -Remind User to update log or offer to do it at the end of a task
+  Use the command `/log-update` to add entries to the work log, or manually edit WORK_LOG.md.
 
 ## Environment Variables
 
 Required environment variables:
 
 ```bash
-# LLM API - DeepSeek
-DEEPSEEK_API_KEY=            # DeepSeek API key
-DEEPSEEK_BASE_URL=           # DeepSeek API base URL (https://api.deepseek.com)
+# LLM API - Google Gemini
+GEMINI_API_KEY=              # Google Gemini API key
 
 # Caching
 REDIS_URL=                   # Redis connection string

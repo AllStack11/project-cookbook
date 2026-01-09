@@ -5,7 +5,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 ## Features
 
 - **Multi-Source Support**: Extract recipes from YouTube, blogs, Instagram, TikTok, and more
-- **AI-Powered Extraction**: Uses DeepSeek AI to intelligently parse recipe content
+- **AI-Powered Extraction**: Uses Google Gemini AI to intelligently parse recipe content
 - **Clean Output**: Structured recipe format with ingredients, instructions, and metadata
 - **Cost-Optimized**: Smart caching and token reduction strategies
 - **Rate Limited**: Free tier with 10 extractions per day
@@ -15,7 +15,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 
 - **Framework**: Next.js 14 with App Router (TypeScript)
 - **Styling**: Tailwind CSS
-- **LLM Integration**: DeepSeek API (deepseek-chat for cost efficiency, deepseek-reasoner for complex extractions)
+- **LLM Integration**: Google Gemini API (gemini-2.5-flash-lite for cost efficiency and speed)
 - **Content Extraction**: youtube-transcript, Cheerio
 - **Testing**: Jest + React Testing Library
 - **Hosting**: Vercel-ready (serverless functions + CDN)
@@ -25,7 +25,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 ### Prerequisites
 
 - Node.js 18+ and npm
-- DeepSeek API key (sign up at https://platform.deepseek.com)
+- Google Gemini API key (get from https://ai.google.dev/)
 
 ### Installation
 
@@ -51,9 +51,8 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```bash
-# LLM API - DeepSeek
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-DEEPSEEK_BASE_URL=https://api.deepseek.com
+# LLM API - Google Gemini
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # Caching (optional - in-memory by default)
 # REDIS_URL=redis://localhost:6379
@@ -108,7 +107,7 @@ npm run test:coverage # Run tests with coverage report
 
 /lib
   /extractors        # Content extraction (YouTube, web scraping)
-  /llm               # LLM integration (DeepSeek client, prompts)
+  /llm               # LLM integration (Gemini client, prompts)
   /cache             # Caching layer
   /validators        # Input and recipe validation
   /utils             # Utility functions
@@ -127,7 +126,7 @@ npm run test:coverage # Run tests with coverage report
    - Text: Direct input
 3. **Preprocessing**: Reduce token count by 50-70% (remove ads, navigation, etc.)
 4. **Cache Check**: Look for cached recipe by URL
-5. **LLM Processing**: Send to DeepSeek with structured prompt
+5. **LLM Processing**: Send to Google Gemini with structured prompt and JSON schema
 6. **Validation**: Verify recipe has required fields (2+ ingredients, 2+ steps)
 7. **Display**: Show formatted recipe with print/copy options
 
@@ -158,7 +157,7 @@ The app implements several cost-saving strategies:
 
 1. **Caching**: URL-based caching with 30-day TTL (blogs) / 7-day TTL (social media)
 2. **Token Reduction**: Strip ads, navigation, comments (50-70% reduction)
-3. **Model Selection**: Use deepseek-chat by default, upgrade to deepseek-reasoner only when needed
+3. **Efficient Model**: Use gemini-2.5-flash-lite for fast, cost-effective extractions
 4. **Rate Limiting**: Prevent abuse with 10 requests/day free tier
 
 ## Environment Variables
@@ -167,8 +166,7 @@ See [.env.example](.env.example) for all available environment variables.
 
 Required:
 
-- `DEEPSEEK_API_KEY`: Your DeepSeek API key
-- `DEEPSEEK_BASE_URL`: DeepSeek API base URL (default: https://api.deepseek.com)
+- `GEMINI_API_KEY`: Your Google Gemini API key
 
 Optional:
 

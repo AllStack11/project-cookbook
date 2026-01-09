@@ -29,6 +29,9 @@ export interface Recipe {
   sourceUrl?: string;
   imageUrl?: string;
   nutrition?: Nutrition;
+  // Quality & Source metadata
+  confidenceScore?: number; // 0-100 score indicating extraction quality
+  sourcePlatform?: SourceType; // Platform where recipe was extracted from
   // Fallback metadata
   isGenerated?: boolean;
   isPartialFallback?: boolean;
@@ -65,6 +68,12 @@ export interface RecipeValidationResult {
 export enum SourceType {
   YOUTUBE = "youtube",
   BLOG = "blog",
-  SOCIAL_MEDIA = "social",
+  INSTAGRAM = "instagram",
+  TIKTOK = "tiktok",
+  TWITTER = "twitter",
+  FACEBOOK = "facebook",
+  PINTEREST = "pinterest",
+  REDDIT = "reddit",
+  SOCIAL_MEDIA = "social", // Generic fallback for other social platforms
   TEXT = "text",
 }
