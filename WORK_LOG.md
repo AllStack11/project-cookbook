@@ -28,6 +28,16 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-08: Monetization: Integrated Google AdSense and Ad Placeholders**
+  - **Type**: Feature
+  - **Description**: Implemented the foundation for ad-based monetization.
+    - Created a reusable `AdBanner` component with support for both real Google AdSense units and stylized placeholders for development/testing.
+    - Integrated the AdSense script in `app/layout.tsx` using `next/script` for optimized loading.
+    - Placed ad units in high-visibility locations: below the Hero section on the landing page, on the loading screen (monetizing the 30-40s wait), and in the recipe sidebar.
+    - Added environment variable support for `NEXT_PUBLIC_ADSENSE_CLIENT_ID`.
+    - Implemented a `isPremium` prop to future-proof for the ad-free subscription mode.
+  - **Impact**: Enables revenue generation from the free tier while maintaining a professional look with integrated ad containers.
+
 - **2026-01-08: UI/UX: Enhanced substantial click animation for "Extract Recipe" button**
   - **Type**: Feature / UI
   - **Description**: Overhauled the extraction button animation to be more expressive and "substantial" based on user feedback.

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import InputForm from "./components/InputForm/InputForm";
 import RecipeCard from "./components/RecipeCard/RecipeCard";
 import LoadingState from "./components/LoadingState/LoadingState";
 import ErrorDisplay from "./components/ErrorDisplay/ErrorDisplay";
+import AdBanner from "./components/AdBanner/AdBanner";
 import { Recipe } from "@/types/recipe";
 import { ErrorCode } from "@/types/api";
 
@@ -15,6 +16,17 @@ export default function Home() {
     message: string;
     code?: ErrorCode;
   } | null>(null);
+
+  const loadingRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isLoading && loadingRef.current) {
+      loadingRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [isLoading]);
 
   const handleSubmit = async (input: { url?: string; text?: string }) => {
     setIsLoading(true);
@@ -72,7 +84,20 @@ export default function Home() {
         <InputForm onSubmit={handleSubmit} isLoading={isLoading} />
       </div>
 
-      {isLoading && <LoadingState />}
+      {!isLoading && !recipe && !error && (
+        <div className="mb-12 print:hidden">
+          <AdBanner slot="hero-bottom" />
+        </div>
+      )}
+
+      {isLoading && (
+        <div ref={loadingRef} className="space-y-12 scroll-mt-24">
+          <LoadingState />
+          <div className="print:hidden">
+            <AdBanner slot="loading-bottom" />
+          </div>
+        </div>
+      )}
 
       {error && (
         <ErrorDisplay

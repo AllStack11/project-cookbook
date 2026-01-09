@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Recipe } from "@/types/recipe";
+import AdBanner from "../AdBanner/AdBanner";
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -220,6 +221,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                   </li>
                 ))}
               </ul>
+
+              <div className="mt-8 print:hidden">
+                <AdBanner slot="recipe-sidebar" />
+              </div>
             </div>
 
             {/* Instructions Column */}
