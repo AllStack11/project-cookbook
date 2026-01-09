@@ -1,4 +1,4 @@
-import { extractYoutubeTranscript, extractYoutubeCookingPortion } from '@/lib/extractors/youtubeExtractor';
+import { extractYoutubeTranscript } from '@/lib/extractors/youtubeExtractor';
 
 // Mock youtube-transcript
 jest.mock('youtube-transcript', () => ({
@@ -79,47 +79,6 @@ describe('youtubeExtractor', () => {
     });
   });
 
-  describe('extractYoutubeCookingPortion', () => {
-    it('should extract cooking-related portions', async () => {
-      const mockTranscript = [
-        { text: 'Welcome to my channel', offset: 0, duration: 2 },
-        { text: 'Add flour and mix well', offset: 2, duration: 3 },
-        { text: 'Bake at 350 degrees', offset: 5, duration: 2 },
-        { text: 'Thanks for watching', offset: 7, duration: 2 },
-      ];
-
-      mockFetchTranscript.mockResolvedValue(mockTranscript as any);
-
-      const result = await extractYoutubeCookingPortion('test-video-id');
-
-      expect(result.success).toBe(true);
-      expect(result.content).toBeDefined();
-      expect(result.content).toContain('flour');
-      expect(result.content).toContain('Bake');
-    });
-
-    it('should handle no cooking keywords found', async () => {
-      const mockTranscript = [
-        { text: 'Hello everyone', offset: 0, duration: 2 },
-        { text: 'This is a test', offset: 2, duration: 2 },
-      ];
-
-      mockFetchTranscript.mockResolvedValue(mockTranscript as any);
-
-      const result = await extractYoutubeCookingPortion('test-video-id');
-
-      // Should still return content (fallback to full transcript)
-      expect(result.success).toBe(true);
-      expect(result.content).toBeDefined();
-    });
-
-    it('should handle errors', async () => {
-      mockFetchTranscript.mockRejectedValue(new Error('API error'));
-
-      const result = await extractYoutubeCookingPortion('test-video-id');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to extract cooking portion');
-    });
-  });
+  // Note: extractYoutubeCookingPortion tests removed as function was refactored
+  // The full transcript extraction is now handled by extractYoutubeTranscript
 });

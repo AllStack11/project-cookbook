@@ -10,16 +10,19 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "validate-deploy": "node scripts/validate-deploy.js",
+    "pre-deploy": "npm run type-check && npm run lint && node scripts/validate-deploy.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@sparticuz/chromium": "^143.0.4",
     "@vercel/kv": "^1.0.1",
     "cheerio": "^1.0.0",
     "ioredis": "^5.3.2",
     "next": "^14.2.35",
     "openai": "^4.77.0",
-    "puppeteer": "^22.6.0",
+    "puppeteer-core": "^24.34.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "stripe": "^14.21.0",

@@ -17,14 +17,7 @@ export async function isSuspiciousIP(
   confidence: number;
 }> {
   // 1. Check for common VPN/Proxy headers
-  // Some CDNs or proxies add these
-  const proxyHeaders = [
-    "x-real-ip",
-    "forwarded",
-    "x-forwarded-for",
-    "via",
-    "x-proxy-id",
-  ];
+  // Some CDNs or proxies add these headers (currently unused but may be used in future enhancements)
 
   // If there are multiple hops in x-forwarded-for, it's more likely to be a proxy/VPN
   const forwardedFor = headers.get("x-forwarded-for");
@@ -42,8 +35,9 @@ export async function isSuspiciousIP(
 
   // 2. Vercel-specific checks (if applicable)
   // Vercel sometimes provides location info that can be inconsistent with VPNs
-  const country = headers.get("x-vercel-ip-country");
-  const city = headers.get("x-vercel-ip-city");
+  // Currently unused but may be used for future geo-based detection
+  // const country = headers.get("x-vercel-ip-country");
+  // const city = headers.get("x-vercel-ip-city");
 
   // If we wanted to use an external API like ip-api.com (Free for non-commercial)
   // try {

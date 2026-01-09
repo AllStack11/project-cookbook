@@ -175,12 +175,29 @@ Optional:
 
 ## Deployment
 
-### Vercel (Recommended)
+### Quick Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone)
+
+**Simple steps:**
 
 1. Push your code to GitHub
-2. Import project in Vercel dashboard
-3. Add environment variables in Vercel settings
-4. Deploy
+2. Connect to Vercel (visit [vercel.com/new](https://vercel.com/new))
+3. Add these environment variables in Vercel dashboard:
+   - `GEMINI_API_KEY` (required)
+   - `NEXT_PUBLIC_APP_URL` (your Vercel URL)
+   - `ENABLE_DEBUG_LOGGING=false` (for production)
+4. Click "Deploy"
+
+**📖 For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+
+This includes:
+- Step-by-step Vercel setup
+- Environment variables reference
+- Vercel KV caching setup (recommended)
+- Puppeteer/Instagram extraction configuration
+- Cost monitoring and optimization tips
+- Troubleshooting guide
 
 ### Manual Deployment
 

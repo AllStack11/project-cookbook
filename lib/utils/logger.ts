@@ -16,14 +16,6 @@ export enum LogLevel {
   PERF = 'PERF', // Performance timing
 }
 
-interface LogEntry {
-  level: LogLevel;
-  message: string;
-  data?: any;
-  timestamp: string;
-  duration?: number;
-}
-
 class Logger {
   private context: string;
 
@@ -39,13 +31,6 @@ class Logger {
 
     const timestamp = new Date().toISOString();
     const prefix = `[${timestamp}] [${level}] [${this.context}]`;
-
-    const logEntry: LogEntry = {
-      level,
-      message,
-      data,
-      timestamp,
-    };
 
     switch (level) {
       case LogLevel.ERROR:

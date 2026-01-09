@@ -1,6 +1,5 @@
 import {
   extractRecipeWithGemini,
-  getGeminiClient,
 } from "@/lib/llm/geminiClient";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 

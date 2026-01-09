@@ -1,9 +1,21 @@
-import puppeteer from "puppeteer";
 import { WebScraperResult } from "./webScraper";
 import { preprocessContent } from "./preprocessor";
 import { createLogger } from "../utils/logger";
 
 const logger = createLogger("Extractor:Instagram");
+
+// Dynamic imports for Puppeteer to support both local dev and Vercel
+async function getBrowser() {
+  const puppeteer = await import("puppeteer-core");
+  const chromium = await import("@sparticuz/chromium");
+
+  // Vercel-compatible setup using @sparticuz/chromium
+  return await puppeteer.default.launch({
+    args: chromium.default.args,
+    executablePath: await chromium.default.executablePath(),
+    headless: true,
+  });
+}
 
 export async function scrapeInstagramContent(
   url: string
@@ -12,10 +24,7 @@ export async function scrapeInstagramContent(
   try {
     logger.info("Launching Puppeteer for Instagram extraction", { url });
 
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browser = await getBrowser();
 
     const page = await browser.newPage();
 

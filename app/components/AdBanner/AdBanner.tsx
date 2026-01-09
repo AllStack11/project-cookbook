@@ -19,7 +19,7 @@ const AdBanner = ({
   className = "",
   isPremium = false,
 }: AdBannerProps) => {
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [, setIsLoaded] = useState(false);
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
   useEffect(() => {
