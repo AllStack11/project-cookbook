@@ -77,6 +77,7 @@ function removeNavigationText(text: string): string {
     /search this website/gi,
     /subscribe to newsletter/gi,
     /share on (facebook|twitter|pinterest|instagram)/gi,
+    /\bmenu\b/gi,
   ];
 
   let result = text;

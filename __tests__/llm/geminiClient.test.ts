@@ -1,6 +1,4 @@
-import {
-  extractRecipeWithGemini,
-} from "@/lib/llm/geminiClient";
+import { extractRecipeWithGemini } from "@/lib/llm/geminiClient";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Mock GoogleGenerativeAI
@@ -70,15 +68,12 @@ describe("geminiClient", () => {
         generationConfig: expect.objectContaining({
           responseMimeType: "application/json",
           temperature: 1,
-          thinkingConfig: {
-            thinkingLevel: "low",
-          },
         }),
       })
     );
   });
 
-  it("should use high thinking level for long content", async () => {
+  it("should use thinking level for reasoning models", async () => {
     const mockResponse = {
       response: {
         text: () =>
@@ -91,14 +86,16 @@ describe("geminiClient", () => {
 
     mockGenerateContent.mockResolvedValue(mockResponse);
 
-    const longContent = "a".repeat(2500);
-    await extractRecipeWithGemini(longContent, "Test prompt");
+    const content = "Test content";
+    const thinkingModel = "gemini-3-thinking-preview";
+    await extractRecipeWithGemini(content, "Test prompt", thinkingModel);
 
     expect(mockGetGenerativeModel).toHaveBeenCalledWith(
       expect.objectContaining({
+        model: thinkingModel,
         generationConfig: expect.objectContaining({
           thinkingConfig: {
-            thinkingLevel: "high",
+            thinkingLevel: "low",
           },
         }),
       })

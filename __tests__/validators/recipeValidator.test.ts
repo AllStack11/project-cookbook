@@ -144,7 +144,7 @@ describe("recipeValidator", () => {
         ...validRecipe,
         ingredients: [
           { item: "flour", amount: "1", unit: "cup" },
-          { item: "your ingredient here", amount: "2", unit: "cups" },
+          { item: "placeholder item", amount: "2", unit: "cups" },
         ],
       };
       const result = validateRecipe(recipe);
@@ -157,7 +157,7 @@ describe("recipeValidator", () => {
         ...validRecipe,
         instructions: [
           { step: 1, text: "Mix ingredients" },
-          { step: 2, text: "Add your example text here" },
+          { step: 2, text: "Add your todo text here" },
         ],
       };
       const result = validateRecipe(recipe);

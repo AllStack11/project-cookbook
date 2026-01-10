@@ -53,8 +53,11 @@ export function truncateToMaxTokens(
   let truncated = text.substring(0, maxChars);
   const lastSpaceIndex = truncated.lastIndexOf(" ");
 
-  if (lastSpaceIndex > maxChars * 0.9) {
+  if (lastSpaceIndex > maxChars * 0.8) {
     truncated = truncated.substring(0, lastSpaceIndex);
+  } else {
+    // If no space found in the last 20% of the truncated text, just trim trailing spaces
+    truncated = truncated.trimEnd();
   }
 
   return truncated;

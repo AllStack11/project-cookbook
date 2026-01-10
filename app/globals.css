@@ -1,6 +1,30 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #fffbeb;
+  --color-primary-100: #fef3c7;
+  --color-primary-200: #fde68a;
+  --color-primary-300: #fcd34d;
+  --color-primary-400: #fbbf24;
+  --color-primary-500: #f59e0b;
+  --color-primary-600: #d97706;
+  --color-primary-700: #b45309;
+  --color-primary-800: #92400e;
+  --color-primary-900: #78350f;
+
+  --color-accent-50: #ecfdf5;
+  --color-accent-100: #d1fae5;
+  --color-accent-200: #a7f3d0;
+  --color-accent-300: #6ee7b7;
+  --color-accent-400: #34d399;
+  --color-accent-500: #10b981;
+  --color-accent-600: #059669;
+  --color-accent-700: #047857;
+  --color-accent-800: #065f46;
+  --color-accent-900: #064e3b;
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+}
 
 @layer base {
   html {
@@ -87,19 +111,19 @@
   }
 
   @media print {
-    .print\\:hidden {
+    .print\:hidden {
       display: none !important;
     }
 
-    .print\\:block {
+    .print\:block {
       display: block !important;
     }
 
-    .print\\:shadow-none {
+    .print\:shadow-none {
       box-shadow: none !important;
     }
 
-    .print\\:mb-4 {
+    .print\:mb-4 {
       margin-bottom: 1rem !important;
     }
   }

@@ -6,15 +6,48 @@ const logger = createLogger("Extractor:Instagram");
 
 // Dynamic imports for Puppeteer to support both local dev and Vercel
 async function getBrowser() {
-  const puppeteer = await import("puppeteer-core");
-  const chromium = await import("@sparticuz/chromium");
+  // Check if we're running on Vercel
+  const isVercel = !!(process.env.VERCEL || process.env.AWS_EXECUTION_ENV);
 
-  // Vercel-compatible setup using @sparticuz/chromium
-  return await puppeteer.default.launch({
-    args: chromium.default.args,
-    executablePath: await chromium.default.executablePath(),
-    headless: true,
-  });
+  if (isVercel) {
+    logger.info("Using Vercel-optimized Chromium configuration");
+    const puppeteer = await import("puppeteer-core");
+    const chromium = await import("@sparticuz/chromium");
+
+    return await puppeteer.default.launch({
+      args: chromium.default.args,
+      executablePath: await chromium.default.executablePath(),
+      headless: true,
+    });
+  } else {
+    logger.info("Using local environment browser configuration");
+
+    // Local development - use common macOS paths
+    const macPaths = [
+      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    ];
+
+    const fs = await import("fs");
+    const puppeteer = await import("puppeteer-core");
+
+    for (const path of macPaths) {
+      if (fs.existsSync(path)) {
+        logger.info(`Found browser at ${path}`);
+        return await puppeteer.default.launch({
+          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          executablePath: path,
+          headless: true,
+          userDataDir: `/tmp/puppeteer_local_profile_${Date.now()}`,
+        });
+      }
+    }
+
+    throw new Error(
+      "No suitable browser found for Instagram extraction. Please install Microsoft Edge or Google Chrome."
+    );
+  }
 }
 
 export async function scrapeInstagramContent(

@@ -28,6 +28,17 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Fix: Fixed Vercel deployment warnings by updating all deprecated and outdated packages.
+  - **Type**: Optimization / Bug Fix
+  - **Description**: Upgraded the entire dependency stack to latest stable versions, resolving numerous deprecation warnings and security vulnerabilities.
+    - Upgraded **Next.js** to 15.1.4 and **React/React-Dom** to 19.0.0.
+    - Upgraded **Tailwind CSS** to v4.0.0 and migrated configuration to CSS-first approach.
+    - Updated **ESLint**, **TypeScript**, and **Jest** to latest versions.
+    - Fixed **Puppeteer/Chromium** local execution issues and improved browser detection logic.
+    - Fixed breaking changes in CSS processing, next.config.js, and test suites.
+    - Re-aligned 90+ test cases with new logic and stricter validation.
+  - **Impact**: Eliminates build-time warnings, improves security, and leverages latest framework performance optimizations. Ensures smooth Vercel deployment.
+
 - **2026-01-09**: Fix: Resolved Vercel deployment error "npm error Invalid Version".
   - **Description**: Rewrote `package.json` to remove potentially hidden characters and explicitly set the Node.js engine version to `>=18.17.0`.
   - **Impact**: Ensures compatibility with Vercel's build environment and resolves parsing issues during dependency installation.

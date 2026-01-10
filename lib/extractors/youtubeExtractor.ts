@@ -61,7 +61,8 @@ export async function extractYoutubeTranscript(
     ) {
       return {
         success: false,
-        error: "No transcript available for this video",
+        error:
+          "Transcript is disabled or no transcript available for this video",
       };
     }
 
