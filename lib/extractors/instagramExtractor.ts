@@ -15,7 +15,13 @@ async function getBrowser() {
     const chromium = await import("@sparticuz/chromium");
 
     return await puppeteer.default.launch({
-      args: chromium.default.args,
+      args: [
+        ...chromium.default.args,
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-software-rasterizer",
+        "--single-process",
+      ],
       executablePath: await chromium.default.executablePath(),
       headless: true,
     });
@@ -69,16 +75,19 @@ export async function scrapeInstagramContent(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     );
 
-    // Navigate to URL
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    // Navigate to URL - use domcontentloaded for faster loading
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
 
     // Wait for the main content or caption to appear
     // Instagram captions are often within article elements or specific classes
     try {
-      await page.waitForSelector("article", { timeout: 10000 });
+      await page.waitForSelector("article", { timeout: 5000 });
     } catch (e) {
       logger.warn("Timeout waiting for article selector, proceeding anyway");
     }
+
+    // Small delay to allow dynamic content to render
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Extract content
     const data = await page.evaluate(() => {
