@@ -28,6 +28,11 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Fix: Corrected recipe time formatting in UI
+  - **Type**: Bug Fix
+  - **Description**: Fixed a syntax error in `lib/utils/timeFormatter.ts` where template literals were being escaped with backslashes, causing raw variable names to be displayed instead of their values. Added unit tests to prevent regression.
+  - **Impact**: Restores correct display of Prep Time, Cook Time, and Total Time in the Recipe Card.
+
 - **2026-01-10**: Enhancement: Added more cooking facts to LoadingState
   - **Type**: User Experience Enhancement
   - **Description**: Expanded the COOKING_FACTS array in `app/components/LoadingState/LoadingState.tsx` from 20 to over 150 interesting food facts. The facts cover a wide range of topics including food history, science, trivia, and cultural insights. Each fact includes an appropriate emoji for visual appeal.

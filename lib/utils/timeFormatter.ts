@@ -11,12 +11,12 @@ export function formatMinutes(minutes: number | undefined): string {
   const remainingMinutes = minutes % 60;
 
   if (hours === 0) {
-    return `\${remainingMinutes}m`;
+    return `${remainingMinutes}m`;
   }
 
   if (remainingMinutes === 0) {
-    return `\${hours}h`;
+    return `${hours}h`;
   }
 
-  return `\${hours}h \${remainingMinutes}m`;
+  return `${hours}h ${remainingMinutes}m`;
 }
