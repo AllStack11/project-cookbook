@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateUrl } from "@/lib/validators/urlValidator";
+import { validateUrl, isLikelyRecipeUrl } from "@/lib/validators/urlValidator";
 import {
   validateRecipe,
   calculateConfidenceScore,
@@ -146,6 +146,14 @@ export async function POST(request: NextRequest) {
         sourceType,
         videoId: urlValidation.videoId,
       });
+
+      // Early URL pre-detection (soft check)
+      const likelyRecipe = isLikelyRecipeUrl(url);
+      if (!likelyRecipe && sourceType === SourceType.BLOG) {
+        logger.info(
+          "URL path does not strongly suggest a recipe, will perform deeper signal check after scraping"
+        );
+      }
 
       // Check cache
       const cacheCheckStart = Date.now();
@@ -304,7 +312,28 @@ export async function POST(request: NextRequest) {
         logger.info("Web content extracted", {
           contentLength: content.length,
           title: result.metadata?.title?.substring(0, 50),
+          hasRecipeSignals: result.metadata?.hasRecipeSignals,
         });
+
+        // Hard pre-detection check after scraping for non-social/non-youtube sources
+        if (
+          sourceType === SourceType.BLOG &&
+          !result.metadata?.hasRecipeSignals &&
+          !isLikelyRecipeUrl(url)
+        ) {
+          logger.warn(
+            "No recipe signals found in URL or page content. Rejecting before LLM call."
+          );
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "This URL doesn't appear to contain a recipe. Please try a different URL or paste the recipe text directly.",
+              errorCode: ErrorCode.NO_RECIPE_FOUND,
+            },
+            { status: StatusCode.BAD_REQUEST }
+          );
+        }
       }
     } else {
       content = text;
@@ -372,6 +401,21 @@ export async function POST(request: NextRequest) {
     const parseStart = Date.now();
     const parseResult = parseRecipeFromLLMResponse(llmResponse.content);
     logger.perf("Response parsing", Date.now() - parseStart);
+
+    // Handle case where LLM explicitly found no recipe
+    if (parseResult.noRecipeFound) {
+      logger.info("LLM explicitly indicated no recipe found", {
+        reason: parseResult.noRecipeReason,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: parseResult.noRecipeReason || "No recipe found in the content",
+          errorCode: ErrorCode.NO_RECIPE_FOUND,
+        },
+        { status: StatusCode.BAD_REQUEST }
+      );
+    }
 
     if (!parseResult.success) {
       logger.error("Failed to parse LLM response", {

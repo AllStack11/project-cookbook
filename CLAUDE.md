@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Styling**: Tailwind CSS
 - **LLM Integration**: Google Gemini API (gemini-2.5-flash-lite for cost efficiency and speed)
 - **Content Extraction**:
-  - `youtube-transcript` for YouTube videos
+  - `youtubei.js` for YouTube videos (hybrid approach with YouTube Data API v3 fallback)
   - Cheerio for web scraping
   - `puppeteer-core` + `@sparticuz/chromium` for Instagram (Vercel-compatible)
 - **Payment**: Stripe for subscriptions
@@ -236,6 +236,7 @@ The project is **fully configured and tested** for Vercel deployment with:
    - Import your repository
    - Add environment variables:
      - `GEMINI_API_KEY` (required)
+     - `YOUTUBE_API_KEY` (optional but recommended for YouTube extraction reliability)
      - `NEXT_PUBLIC_APP_URL` (your Vercel URL, e.g., `https://your-app.vercel.app`)
      - `ENABLE_DEBUG_LOGGING=false` (for production)
    - Click "Deploy"
@@ -349,7 +350,12 @@ Required environment variables:
 
 ```bash
 # LLM API - Google Gemini
-GEMINI_API_KEY=              # Google Gemini API key
+GEMINI_API_KEY=              # Google Gemini API key (required)
+
+# YouTube Data API v3 (optional - fallback for transcript extraction)
+# Get from: https://console.cloud.google.com/apis/credentials
+# Enable "YouTube Data API v3" in your Google Cloud project
+YOUTUBE_API_KEY=             # YouTube Data API key (optional but recommended)
 
 # Caching
 REDIS_URL=                   # Redis connection string

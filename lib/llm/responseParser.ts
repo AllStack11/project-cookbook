@@ -1,9 +1,11 @@
-import { Recipe } from "@/types/recipe";
+import { Recipe, LLMExtractionResponse } from "@/types/recipe";
 
 export interface ParseResult {
   success: boolean;
   recipe?: Recipe;
   error?: string;
+  noRecipeFound?: boolean;
+  noRecipeReason?: string;
 }
 
 export function parseRecipeFromLLMResponse(response: string): ParseResult {
@@ -17,7 +19,17 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
     }
 
     // Parse JSON
-    const parsed = JSON.parse(cleaned);
+    const parsed: LLMExtractionResponse = JSON.parse(cleaned);
+
+    // Check if LLM indicated no recipe was found
+    if (parsed.noRecipeFound === true) {
+      return {
+        success: false,
+        noRecipeFound: true,
+        noRecipeReason:
+          parsed.noRecipeReason || "No recipe found in the provided content",
+      };
+    }
 
     // Validate it looks like a recipe
     if (!parsed.title || !parsed.ingredients || !parsed.instructions) {

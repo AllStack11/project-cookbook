@@ -34,6 +34,16 @@ const recipeSchema: ResponseSchema = {
   description: "Recipe extraction schema",
   type: SchemaType.OBJECT,
   properties: {
+    noRecipeFound: {
+      type: SchemaType.BOOLEAN,
+      description:
+        "Set to true if the content does not contain a recipe. When true, only noRecipeReason should be provided.",
+    },
+    noRecipeReason: {
+      type: SchemaType.STRING,
+      description:
+        "When noRecipeFound is true, explain why no recipe was found (e.g., 'Content is a product review', 'Page contains only nutritional information').",
+    },
     title: {
       type: SchemaType.STRING,
       description: "The name of the recipe",
@@ -100,7 +110,7 @@ const recipeSchema: ResponseSchema = {
       },
     },
   },
-  required: ["title", "ingredients", "instructions"],
+  required: ["noRecipeFound"],
 };
 
 export async function extractRecipeWithGemini(

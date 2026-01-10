@@ -42,6 +42,8 @@ export interface ExtractionResult {
   success: boolean;
   recipe?: Recipe;
   error?: string;
+  noRecipeFound?: boolean;
+  noRecipeReason?: string;
   metadata?: {
     cacheHit: boolean;
     modelUsed: string;
@@ -49,6 +51,24 @@ export interface ExtractionResult {
     processingTime: number;
     isFallback?: boolean;
   };
+}
+
+// LLM response can either indicate no recipe found or contain recipe data
+export interface LLMExtractionResponse {
+  noRecipeFound: boolean;
+  noRecipeReason?: string;
+  // Recipe fields (only present when noRecipeFound is false)
+  title?: string;
+  description?: string;
+  servings?: number;
+  prepTime?: number;
+  cookTime?: number;
+  totalTime?: number;
+  ingredients?: Ingredient[];
+  instructions?: Instruction[];
+  notes?: string[];
+  imageUrl?: string;
+  nutrition?: Nutrition;
 }
 
 export interface ValidationError {

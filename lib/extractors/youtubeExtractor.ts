@@ -11,75 +11,327 @@ export interface YoutubeExtractResult {
   metadata?: {
     videoId: string;
     duration?: number;
-    source: "transcript" | "description";
+    source: "transcript" | "description" | "youtube-api" | "captions";
   };
 }
 
-export async function extractYoutubeTranscript(
+/**
+ * Primary extraction method using youtube-transcript library
+ * Target specialized transcript endpoints
+ */
+async function extractWithTranscriptLibrary(
   videoId: string
 ): Promise<YoutubeExtractResult> {
   try {
-    if (!videoId || videoId.trim().length === 0) {
-      return {
-        success: false,
-        error: "Video ID is required",
-      };
+    logger.info("Attempting transcript extraction with youtube-transcript", {
+      videoId,
+    });
+
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+
+    if (transcript && transcript.length > 0) {
+      const rawText = transcript
+        .map((segment) => segment.text || "")
+        .filter((text) => text.trim().length > 0)
+        .join(" ");
+
+      if (rawText && rawText.trim().length > 0) {
+        const processed = preprocessContent(rawText);
+        logger.info(
+          "Successfully extracted transcript via youtube-transcript",
+          {
+            videoId,
+            rawLength: rawText.length,
+            processedLength: processed.text.length,
+          }
+        );
+
+        return {
+          success: true,
+          content: processed.text,
+          metadata: {
+            videoId,
+            source: "transcript",
+          },
+        };
+      }
     }
 
-    // Fetch transcript
-    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
-
-    if (!transcriptItems || transcriptItems.length === 0) {
-      return {
-        success: false,
-        error: "No transcript available for this video",
-      };
-    }
-
-    // Combine transcript text
-    const rawText = transcriptItems.map((item) => item.text).join(" ");
-
-    // Preprocess to reduce token count
-    const processed = preprocessContent(rawText);
-
+    logger.warn("No transcript found via youtube-transcript", { videoId });
     return {
-      success: true,
-      content: processed.text,
-      metadata: {
-        videoId,
-        source: "transcript",
-      },
+      success: false,
+      error: "No transcript available via library",
     };
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-
-    // Handle specific error cases
-    if (
-      errorMessage.includes("Transcript is disabled") ||
-      errorMessage.includes("No transcript available")
-    ) {
-      return {
-        success: false,
-        error:
-          "Transcript is disabled or no transcript available for this video",
-      };
-    }
-
-    if (errorMessage.includes("Video unavailable")) {
-      return {
-        success: false,
-        error: "Video is unavailable or private",
-      };
-    }
+    logger.warn("youtube-transcript extraction failed", {
+      videoId,
+      error: errorMessage,
+    });
 
     return {
       success: false,
-      error: `Failed to extract transcript: ${errorMessage}`,
+      error: `Transcript library failed: ${errorMessage}`,
     };
   }
 }
 
+/**
+ * Parse XML caption format from YouTube
+ */
+function parseXmlCaptions(xml: string): string {
+  try {
+    // Extract text from <text> tags
+    const textMatches = xml.match(/<text[^>]*>([^<]*)<\/text>/g) || [];
+    const texts = textMatches
+      .map((match) => {
+        const textContent = match.replace(/<[^>]*>/g, "");
+        return decodeHTMLEntities(textContent);
+      })
+      .filter((text) => text.trim().length > 0);
+
+    return texts.join(" ");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Fallback extraction using direct timedtext endpoint
+ * This doesn't require an API key and works for most videos with captions
+ */
+async function extractWithTimedText(
+  videoId: string
+): Promise<YoutubeExtractResult> {
+  try {
+    logger.info("Attempting transcript extraction with timedtext endpoint", {
+      videoId,
+    });
+
+    // Try multiple timedtext URLs with different formats
+    const formats = ["json3", "srv3", "srv1", "vtt"];
+    const languages = ["en", "en-US", "en-GB", "a.en"]; // 'a.en' for auto-generated
+
+    for (const lang of languages) {
+      for (const fmt of formats) {
+        const timedTextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}&fmt=${fmt}`;
+
+        try {
+          const response = await fetch(timedTextUrl, {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              Accept: "*/*",
+            },
+          });
+
+          if (!response.ok) continue;
+
+          const content = await response.text();
+          if (!content || content.trim().length < 50) continue;
+
+          logger.debug("Got timedtext response", {
+            videoId,
+            lang,
+            fmt,
+            contentLength: content.length,
+            preview: content.substring(0, 200),
+          });
+
+          const parsed = parseTimedTextResponse(content, fmt);
+          if (parsed && parsed.length > 50) {
+            const processed = preprocessContent(parsed);
+            logger.info("Successfully extracted transcript via timedtext", {
+              videoId,
+              lang,
+              fmt,
+              rawLength: parsed.length,
+              processedLength: processed.text.length,
+            });
+
+            return {
+              success: true,
+              content: processed.text,
+              metadata: {
+                videoId,
+                source: "youtube-api",
+              },
+            };
+          }
+        } catch {
+          // Continue to next format/language
+        }
+      }
+    }
+
+    // Try getting list of available tracks first
+    const trackListUrl = `https://www.youtube.com/api/timedtext?type=list&v=${videoId}`;
+    try {
+      const trackListResponse = await fetch(trackListUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+      });
+
+      if (trackListResponse.ok) {
+        const trackListXml = await trackListResponse.text();
+        logger.debug("Track list response", {
+          videoId,
+          content: trackListXml.substring(0, 500),
+        });
+
+        // Parse available tracks from XML
+        const trackMatches = trackListXml.match(/<track[^>]+>/g) || [];
+        for (const trackTag of trackMatches) {
+          const langMatch = trackTag.match(/lang_code="([^"]+)"/);
+          const nameMatch = trackTag.match(/name="([^"]*)"/);
+
+          if (langMatch) {
+            const lang = langMatch[1];
+            const name = nameMatch ? nameMatch[1] : "";
+
+            for (const fmt of formats) {
+              const url = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}&name=${encodeURIComponent(name)}&fmt=${fmt}`;
+
+              try {
+                const resp = await fetch(url, {
+                  headers: {
+                    "User-Agent":
+                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                  },
+                });
+
+                if (!resp.ok) continue;
+
+                const content = await resp.text();
+                if (!content || content.trim().length < 50) continue;
+
+                const parsed = parseTimedTextResponse(content, fmt);
+                if (parsed && parsed.length > 50) {
+                  const processed = preprocessContent(parsed);
+                  logger.info(
+                    "Successfully extracted transcript via track list",
+                    {
+                      videoId,
+                      lang,
+                      fmt,
+                    }
+                  );
+
+                  return {
+                    success: true,
+                    content: processed.text,
+                    metadata: {
+                      videoId,
+                      source: "youtube-api",
+                    },
+                  };
+                }
+              } catch {
+                continue;
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Track list approach failed
+    }
+
+    return {
+      success: false,
+      error: "No captions found via timedtext endpoint",
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.warn("Timedtext extraction failed", {
+      videoId,
+      error: errorMessage,
+    });
+
+    return {
+      success: false,
+      error: `Timedtext extraction failed: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * Parse timedtext response based on format
+ */
+function parseTimedTextResponse(content: string, format: string): string {
+  try {
+    if (format === "json3") {
+      // JSON format
+      const data = JSON.parse(content);
+      if (data.events) {
+        return data.events
+          .filter((event: any) => event.segs)
+          .map((event: any) =>
+            event.segs.map((seg: any) => seg.utf8 || "").join("")
+          )
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+    }
+
+    if (format === "vtt") {
+      // WebVTT format
+      const lines = content.split("\n");
+      const textLines = lines.filter(
+        (line) =>
+          line.trim() &&
+          !line.startsWith("WEBVTT") &&
+          !line.startsWith("Kind:") &&
+          !line.startsWith("Language:") &&
+          !line.includes("-->") &&
+          !/^\d+$/.test(line.trim())
+      );
+      return textLines.join(" ").replace(/\s+/g, " ").trim();
+    }
+
+    // XML formats (srv1, srv3)
+    if (content.includes("<text") || content.includes("<transcript")) {
+      return parseXmlCaptions(content);
+    }
+
+    // Try as plain XML anyway
+    const textMatches = content.match(/<text[^>]*>([^<]*)<\/text>/g);
+    if (textMatches && textMatches.length > 0) {
+      return textMatches
+        .map((match) => decodeHTMLEntities(match.replace(/<[^>]*>/g, "")))
+        .join(" ");
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Decode HTML entities in caption text
+ */
+function decodeHTMLEntities(text: string): string {
+  return text
+    .replace(/&/g, "&")
+    .replace(/</g, "<")
+    .replace(/>/g, ">")
+    .replace(/"/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+    .replace(/\\n/g, " ")
+    .replace(/\n/g, " ");
+}
+
+/**
+ * Fallback: Extract video description from YouTube page
+ */
 export async function extractYoutubeDescription(
   videoId: string
 ): Promise<YoutubeExtractResult> {
@@ -111,56 +363,18 @@ export async function extractYoutubeDescription(
 
     const html = await response.text();
 
-    // Strategy 1: Look for the description in the ytInitialData JSON object
-    // This is more robust than shortDescription
-    const ytDataMatch = html.match(/var ytInitialData = (.*?);<\/script>/);
-    if (ytDataMatch && ytDataMatch[1]) {
-      try {
-        const ytData = JSON.parse(ytDataMatch[1]);
-        const description =
-          ytData.contents?.twoColumnWatchNextResults?.results?.results
-            ?.contents?.[0]?.videoPrimaryInfoRenderer?.description?.runs?.[0]
-            ?.text ||
-          ytData.engagementPanels
-            ?.find(
-              (p: any) =>
-                p.engagementPanelSectionListRenderer?.targetId ===
-                "engagement-panel-structured-description"
-            )
-            ?.engagementPanelSectionListRenderer?.content?.structuredDescriptionContentRenderer?.items?.find(
-              (i: any) => i.videoDescriptionHeaderRenderer
-            )
-            ?.videoDescriptionHeaderRenderer?.description?.runs?.map(
-              (r: any) => r.text
-            )
-            .join("") ||
-          "";
-
-        if (description && description.trim().length > 0) {
-          logger.info("Found description in ytInitialData", { videoId });
-          const processed = preprocessContent(description);
-          return {
-            success: true,
-            content: processed.text,
-            metadata: { videoId, source: "description" },
-          };
-        }
-      } catch (e) {
-        logger.warn("Failed to parse ytInitialData", { error: e });
-      }
-    }
-
-    // Strategy 2: Look for "shortDescription" (older but simpler)
-    const shortDescMatch = html.match(/"shortDescription":"(.*?)"/);
+    // Strategy 1: Look for "shortDescription" in ytInitialPlayerResponse
+    const shortDescMatch = html.match(/"shortDescription":"(.*?)(?<!\\)"/);
     if (shortDescMatch && shortDescMatch[1]) {
       const rawDescription = shortDescMatch[1]
         .replace(/\\n/g, "\n")
         .replace(/\\"/g, '"')
         .replace(/\\\\/g, "\\");
 
-      if (rawDescription.trim().length > 0) {
+      if (rawDescription.trim().length > 50) {
         logger.info("Found description via shortDescription match", {
           videoId,
+          length: rawDescription.length,
         });
         const processed = preprocessContent(rawDescription);
         return {
@@ -171,17 +385,39 @@ export async function extractYoutubeDescription(
       }
     }
 
-    // Strategy 3: Fallback to meta description
+    // Strategy 2: Look for description in ytInitialData
+    const ytDataMatch = html.match(/var ytInitialData = (.*?);<\/script>/);
+    if (ytDataMatch && ytDataMatch[1]) {
+      try {
+        const ytData = JSON.parse(ytDataMatch[1]);
+        const description =
+          ytData.contents?.twoColumnWatchNextResults?.results?.results
+            ?.contents?.[1]?.videoSecondaryInfoRenderer?.attributedDescription
+            ?.content || "";
+
+        if (description && description.trim().length > 50) {
+          logger.info("Found description in ytInitialData", { videoId });
+          const processed = preprocessContent(description);
+          return {
+            success: true,
+            content: processed.text,
+            metadata: { videoId, source: "description" },
+          };
+        }
+      } catch (e) {
+        logger.debug("Failed to parse ytInitialData", { error: e });
+      }
+    }
+
+    // Strategy 3: Fallback to meta description (usually too short)
     const metaMatch = html.match(
       /<meta\s+name="description"\s+content="(.*?)"/i
     );
     if (metaMatch && metaMatch[1]) {
-      const metaDescription = metaMatch[1]
-        .replace(/"/g, '"')
-        .replace(/&/g, "&")
-        .replace(/&#39;/g, "'");
+      const metaDescription = decodeHTMLEntities(metaMatch[1]);
 
-      if (metaDescription.trim().length > 0) {
+      // Only use if it's substantial enough
+      if (metaDescription.trim().length > 100) {
         logger.info("Found description in meta tag", { videoId });
         const processed = preprocessContent(metaDescription);
         return {
@@ -194,7 +430,7 @@ export async function extractYoutubeDescription(
 
     return {
       success: false,
-      error: "Could not find video description",
+      error: "Could not find substantial video description",
     };
   } catch (error) {
     logger.error("Error extracting YouTube description", { error });
@@ -203,4 +439,155 @@ export async function extractYoutubeDescription(
       error: `Failed to extract YouTube description: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
   }
+}
+
+/**
+ * Fallback: Extract video metadata using official YouTube Data API v3
+ * This is used as a reliable fallback when scraping methods fail.
+ * Consumes 1 quota unit.
+ */
+async function extractWithYoutubeApi(
+  videoId: string
+): Promise<YoutubeExtractResult> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error: "YouTube API key not configured",
+    };
+  }
+
+  try {
+    logger.info("Attempting extraction with official YouTube Data API", {
+      videoId,
+    });
+
+    const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`;
+
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.error?.message || `API returned status ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.items || data.items.length === 0) {
+      return {
+        success: false,
+        error: "Video not found via YouTube API",
+      };
+    }
+
+    const videoSnippet = data.items[0].snippet;
+    const title = videoSnippet.title || "";
+    const description = videoSnippet.description || "";
+    const tags = videoSnippet.tags ? videoSnippet.tags.join(", ") : "";
+
+    // Combine metadata for LLM processing
+    const combinedContent = `
+Title: ${title}
+Description:
+${description}
+${tags ? `\nTags: ${tags}` : ""}
+    `.trim();
+
+    if (description.length < 50) {
+      logger.warn("YouTube API returned sparse description", {
+        videoId,
+        length: description.length,
+      });
+    }
+
+    const processed = preprocessContent(combinedContent);
+    logger.info("Successfully extracted content via YouTube Data API", {
+      videoId,
+      contentLength: processed.text.length,
+    });
+
+    return {
+      success: true,
+      content: processed.text,
+      metadata: {
+        videoId,
+        source: "youtube-api",
+      },
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    logger.error("YouTube Data API extraction failed", {
+      videoId,
+      error: errorMessage,
+    });
+
+    return {
+      success: false,
+      error: `YouTube Data API failed: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * Main YouTube transcript extraction function
+ * Uses a hybrid approach with multiple fallbacks:
+ * 1. youtube-transcript (Library) - Specialized transcript retrieval
+ * 2. Direct timedtext endpoint - Multiple formats and languages
+ * 3. Official YouTube Data API v3 - Reliable fallback for metadata/description
+ * 4. Description extraction - Last resort (manual scraping)
+ */
+export async function extractYoutubeTranscript(
+  videoId: string
+): Promise<YoutubeExtractResult> {
+  if (!videoId || videoId.trim().length === 0) {
+    return {
+      success: false,
+      error: "Video ID is required",
+    };
+  }
+
+  logger.info("Starting hybrid YouTube extraction", { videoId });
+
+  // Method 1: Try specialized transcript library
+  const libResult = await extractWithTranscriptLibrary(videoId);
+  if (libResult.success) {
+    logger.info("✓ Extraction succeeded via youtube-transcript", { videoId });
+    return libResult;
+  }
+
+  // Method 2: Try direct timedtext endpoint
+  const timedTextResult = await extractWithTimedText(videoId);
+  if (timedTextResult.success) {
+    logger.info("✓ Extraction succeeded via timedtext endpoint", { videoId });
+    return timedTextResult;
+  }
+
+  // Method 3: Try official YouTube Data API (If transcript fails)
+  // This is a reliable fallback for content when transcripts are unavailable
+  if (process.env.YOUTUBE_API_KEY) {
+    const apiResult = await extractWithYoutubeApi(videoId);
+    if (apiResult.success) {
+      logger.info("✓ Extraction succeeded via YouTube Data API", { videoId });
+      return apiResult;
+    }
+  }
+
+  // If transcript methods and API failed, return the error
+  // The calling code will decide whether to fall back to manual description scraping
+  logger.warn("All primary extraction methods failed", {
+    videoId,
+    libError: libResult.error,
+    timedTextError: timedTextResult.error,
+    apiError: !process.env.YOUTUBE_API_KEY
+      ? "API Key missing"
+      : "API call failed",
+  });
+
+  return {
+    success: false,
+    error: `Primary extraction failed. YouTube Data API or scraping required.`,
+  };
 }

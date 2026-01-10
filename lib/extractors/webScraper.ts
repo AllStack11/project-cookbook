@@ -11,6 +11,7 @@ export interface WebScraperResult {
   metadata?: {
     url: string;
     title?: string;
+    hasRecipeSignals?: boolean;
   };
   recipe?: Recipe; // Optional pre-parsed recipe
 }
@@ -53,6 +54,9 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
 
     // Parse with Cheerio
     const $ = cheerio.load(html);
+
+    // Check for recipe signals in metadata
+    const hasRecipeSignals = checkForRecipeSignals($, html);
 
     // Remove unwanted elements
     $("script").remove();
@@ -110,6 +114,7 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
       metadata: {
         url,
         title,
+        hasRecipeSignals,
       },
     };
   } catch (error) {
@@ -249,6 +254,7 @@ export async function extractStructuredRecipe(
         metadata: {
           url,
           title: recipeData.name,
+          hasRecipeSignals: true, // JSON-LD recipe is a definitive signal
         },
       };
     }
@@ -272,4 +278,51 @@ export async function extractStructuredRecipe(
       error: `Failed to extract structured recipe: ${errorMessage}`,
     };
   }
+}
+
+/**
+ * Lightweight check for recipe-related signals in HTML
+ */
+function checkForRecipeSignals($: cheerio.CheerioAPI, html: string): boolean {
+  // Check for JSON-LD Recipe (already done in extractStructuredRecipe, but for completeness)
+  if (html.includes('"@type": "Recipe"') || html.includes('"@type":"Recipe"')) {
+    return true;
+  }
+
+  // Check for Microdata
+  if ($('[itemtype*="Recipe"]').length > 0) {
+    return true;
+  }
+
+  // Check for common recipe keywords in title or meta tags
+  const title = $("title").text().toLowerCase();
+  const description =
+    $('meta[name="description"]').attr("content")?.toLowerCase() || "";
+  const ogTitle =
+    $('meta[property="og:title"]').attr("content")?.toLowerCase() || "";
+
+  const recipeKeywords = [
+    "recipe",
+    "ingredients",
+    "instructions",
+    "cook",
+    "bake",
+    "servings",
+  ];
+
+  if (recipeKeywords.some((keyword) => title.includes(keyword))) return true;
+  if (recipeKeywords.some((keyword) => description.includes(keyword)))
+    return true;
+  if (recipeKeywords.some((keyword) => ogTitle.includes(keyword))) return true;
+
+  // Check for h-recipe microformats
+  if (
+    $(".h-recipe").length > 0 ||
+    $(".p-ingredient").length > 0 ||
+    $(".e-instructions").length > 0
+  ) {
+    return true;
+  }
+
+  return false;
 }

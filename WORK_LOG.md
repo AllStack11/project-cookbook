@@ -28,6 +28,21 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Replaced `youtubei.js` with `youtube-transcript` library to improve transcript hit rates. Refactored `youtubeExtractor.ts` to use the new library as the primary extraction method while maintaining multi-tier fallbacks (Direct TimedText, YouTube Data API, and Description Scraping).
+- **2026-01-10**: Added official YouTube Data API v3 fallback to `youtubeExtractor.ts`. This provides a reliable method for fetching video metadata and descriptions when scraping methods fail, while managing API quota by keeping it as a secondary fallback.
+- **2026-01-10**: Feature: Multi-layer URL and Content Pre-detection
+  - **Type**: Optimization
+  - **Description**: Implemented lightweight pre-detection to identify recipes before calling the LLM.
+    - Added `isLikelyRecipeUrl` in `lib/validators/urlValidator.ts` to check URL paths for recipe keywords.
+    - Added `checkForRecipeSignals` in `lib/extractors/webScraper.ts` to identify JSON-LD, Microdata, Microformats, and meta-tag signals.
+    - Integrated hard pre-detection in `app/api/extract/route.ts` to reject obvious non-recipe URLs after scraping but before LLM invocation.
+  - **Impact**: Significantly reduces LLM costs and latency for non-recipe URLs. Provides immediate feedback for invalid content.
+
+- **2026-01-10**: Feature: Allow LLM to reject non-recipes
+  - **Type**: Feature
+  - **Description**: Implemented the ability for the LLM to explicitly indicate when provided content does not contain a recipe. Updated the extraction API route to handle the `noRecipeFound` boolean and `noRecipeReason` string from the LLM response.
+  - **Impact**: Prevents hallucinations and low-quality fallback recipes for non-recipe content (e.g., news articles, product reviews). Improves error messaging by showing the specific reason provided by the LLM. Bypasses the fallback system when no recipe is found.
+
 - **2026-01-10**: Style, Fixed Blog source badge readability in dark mode. Improved contrast by switching to sky-400 theme with transparency.
 - **2026-01-10**: Fix: Corrected recipe time formatting in UI
   - **Type**: Bug Fix

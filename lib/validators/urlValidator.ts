@@ -1,4 +1,4 @@
-import { SourceType } from '@/types/recipe';
+import { SourceType } from "@/types/recipe";
 
 export interface UrlValidationResult {
   isValid: boolean;
@@ -8,22 +8,46 @@ export interface UrlValidationResult {
 }
 
 const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
-const YOUTUBE_ID_REGEX = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+const YOUTUBE_ID_REGEX =
+  /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
 
 const SOCIAL_MEDIA_PLATFORMS = {
-  INSTAGRAM: ['instagram.com'],
-  TIKTOK: ['tiktok.com'],
-  TWITTER: ['twitter.com', 'x.com'],
-  FACEBOOK: ['facebook.com', 'fb.com', 'fb.watch'],
-  PINTEREST: ['pinterest.com', 'pin.it'],
-  REDDIT: ['reddit.com', 'redd.it'],
+  INSTAGRAM: ["instagram.com"],
+  TIKTOK: ["tiktok.com"],
+  TWITTER: ["twitter.com", "x.com"],
+  FACEBOOK: ["facebook.com", "fb.com", "fb.watch"],
+  PINTEREST: ["pinterest.com", "pin.it"],
+  REDDIT: ["reddit.com", "redd.it"],
 };
+
+const RECIPE_URL_KEYWORDS = [
+  "recipe",
+  "cook",
+  "bake",
+  "food",
+  "dinner",
+  "lunch",
+  "breakfast",
+  "dessert",
+  "dish",
+  "cuisine",
+  "kitchen",
+  "grill",
+  "roast",
+  "stew",
+  "soup",
+  "salad",
+  "cake",
+  "cookie",
+  "bread",
+  "pasta",
+];
 
 export function validateUrl(url: string): UrlValidationResult {
   if (!url || url.trim().length === 0) {
     return {
       isValid: false,
-      error: 'URL is required',
+      error: "URL is required",
     };
   }
 
@@ -33,15 +57,15 @@ export function validateUrl(url: string): UrlValidationResult {
   } catch {
     return {
       isValid: false,
-      error: 'Invalid URL format',
+      error: "Invalid URL format",
     };
   }
 
   // Check protocol
-  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
     return {
       isValid: false,
-      error: 'URL must use HTTP or HTTPS protocol',
+      error: "URL must use HTTP or HTTPS protocol",
     };
   }
 
@@ -51,7 +75,7 @@ export function validateUrl(url: string): UrlValidationResult {
     if (!videoId) {
       return {
         isValid: false,
-        error: 'Could not extract YouTube video ID',
+        error: "Could not extract YouTube video ID",
       };
     }
     return {
@@ -65,7 +89,9 @@ export function validateUrl(url: string): UrlValidationResult {
   const hostname = parsedUrl.hostname.toLowerCase();
 
   // Check Instagram
-  if (SOCIAL_MEDIA_PLATFORMS.INSTAGRAM.some(domain => hostname.includes(domain))) {
+  if (
+    SOCIAL_MEDIA_PLATFORMS.INSTAGRAM.some((domain) => hostname.includes(domain))
+  ) {
     return {
       isValid: true,
       sourceType: SourceType.INSTAGRAM,
@@ -73,7 +99,9 @@ export function validateUrl(url: string): UrlValidationResult {
   }
 
   // Check TikTok
-  if (SOCIAL_MEDIA_PLATFORMS.TIKTOK.some(domain => hostname.includes(domain))) {
+  if (
+    SOCIAL_MEDIA_PLATFORMS.TIKTOK.some((domain) => hostname.includes(domain))
+  ) {
     return {
       isValid: true,
       sourceType: SourceType.TIKTOK,
@@ -81,7 +109,9 @@ export function validateUrl(url: string): UrlValidationResult {
   }
 
   // Check Twitter/X
-  if (SOCIAL_MEDIA_PLATFORMS.TWITTER.some(domain => hostname.includes(domain))) {
+  if (
+    SOCIAL_MEDIA_PLATFORMS.TWITTER.some((domain) => hostname.includes(domain))
+  ) {
     return {
       isValid: true,
       sourceType: SourceType.TWITTER,
@@ -89,7 +119,9 @@ export function validateUrl(url: string): UrlValidationResult {
   }
 
   // Check Facebook
-  if (SOCIAL_MEDIA_PLATFORMS.FACEBOOK.some(domain => hostname.includes(domain))) {
+  if (
+    SOCIAL_MEDIA_PLATFORMS.FACEBOOK.some((domain) => hostname.includes(domain))
+  ) {
     return {
       isValid: true,
       sourceType: SourceType.FACEBOOK,
@@ -97,7 +129,9 @@ export function validateUrl(url: string): UrlValidationResult {
   }
 
   // Check Pinterest
-  if (SOCIAL_MEDIA_PLATFORMS.PINTEREST.some(domain => hostname.includes(domain))) {
+  if (
+    SOCIAL_MEDIA_PLATFORMS.PINTEREST.some((domain) => hostname.includes(domain))
+  ) {
     return {
       isValid: true,
       sourceType: SourceType.PINTEREST,
@@ -105,7 +139,9 @@ export function validateUrl(url: string): UrlValidationResult {
   }
 
   // Check Reddit
-  if (SOCIAL_MEDIA_PLATFORMS.REDDIT.some(domain => hostname.includes(domain))) {
+  if (
+    SOCIAL_MEDIA_PLATFORMS.REDDIT.some((domain) => hostname.includes(domain))
+  ) {
     return {
       isValid: true,
       sourceType: SourceType.REDDIT,
@@ -134,9 +170,39 @@ export function isSocialMediaUrl(url: string): boolean {
     const hostname = parsedUrl.hostname.toLowerCase();
 
     // Check if URL matches any social media platform
-    return Object.values(SOCIAL_MEDIA_PLATFORMS).some(domains =>
-      domains.some(domain => hostname.includes(domain))
+    return Object.values(SOCIAL_MEDIA_PLATFORMS).some((domains) =>
+      domains.some((domain) => hostname.includes(domain))
     );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Heuristic check to see if a URL is likely to be a recipe based on its path and hostname
+ */
+export function isLikelyRecipeUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    const path = parsedUrl.pathname.toLowerCase();
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    // YouTube and Social Media are handled by their own extractors which are recipe-focused
+    if (isYoutubeUrl(url) || isSocialMediaUrl(url)) {
+      return true;
+    }
+
+    // Check path for recipe keywords
+    if (RECIPE_URL_KEYWORDS.some((keyword) => path.includes(keyword))) {
+      return true;
+    }
+
+    // Check hostname for recipe keywords (e.g., allrecipes.com, foodnetwork.com)
+    if (RECIPE_URL_KEYWORDS.some((keyword) => hostname.includes(keyword))) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }
