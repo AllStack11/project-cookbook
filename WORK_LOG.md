@@ -28,6 +28,7 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Style, Fixed Blog source badge readability in dark mode. Improved contrast by switching to sky-400 theme with transparency.
 - **2026-01-10**: Fix: Corrected recipe time formatting in UI
   - **Type**: Bug Fix
   - **Description**: Fixed a syntax error in `lib/utils/timeFormatter.ts` where template literals were being escaped with backslashes, causing raw variable names to be displayed instead of their values. Added unit tests to prevent regression.
