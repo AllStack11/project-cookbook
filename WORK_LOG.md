@@ -28,6 +28,11 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Enhancement: Added more cooking facts to LoadingState
+  - **Type**: User Experience Enhancement
+  - **Description**: Expanded the COOKING_FACTS array in `app/components/LoadingState/LoadingState.tsx` from 20 to over 150 interesting food facts. The facts cover a wide range of topics including food history, science, trivia, and cultural insights. Each fact includes an appropriate emoji for visual appeal.
+  - **Impact**: Significantly improves the loading experience by providing more variety and reducing repetition during the 30-40 second extraction wait. Users will see new facts more frequently, making the wait feel shorter and more educational.
+
 - **2026-01-10**: Fix: Resolved Vercel deployment "Invalid Version" error
   - **Type**: Bug Fix / Deployment
   - **Description**: Fixed a persistent npm install failure on Vercel caused by the `unrs-resolver` package (v1.11.1) having an invalid/empty version in its `@unrs/resolver-binding-linux-arm64-musl` platform binding on npm registry.
