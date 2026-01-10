@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install --loglevel verbose 2>&1 | tee npm-install.log; cat npm-install.log | tail -100",
+  "installCommand": "npm install",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",

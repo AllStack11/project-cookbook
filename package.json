@@ -5,6 +5,9 @@
   "engines": {
     "node": "22.x"
   },
+  "overrides": {
+    "unrs-resolver": "1.7.2"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
