@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Recipe } from "@/types/recipe";
+import { formatMinutes } from "@/lib/utils/timeFormatter";
 import AdBanner from "../AdBanner/AdBanner";
 import SourceBadge from "../SourceBadge/SourceBadge";
 
@@ -28,7 +29,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
     setCurrentServings((prev) => Math.max(1, prev + delta));
   };
 
-  const scaleIngredient = (ingredient: typeof recipe.ingredients[0]) => {
+  const scaleIngredient = (ingredient: (typeof recipe.ingredients)[0]) => {
     if (!ingredient.amount) return ingredient;
 
     const ratio = currentServings / originalServings;
@@ -55,9 +56,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
       else displayAmount = scaledAmount.toFixed(2);
     } else {
       // For larger amounts, round to reasonable precision
-      displayAmount = scaledAmount % 1 < 0.1 || scaledAmount % 1 > 0.9
-        ? Math.round(scaledAmount).toString()
-        : scaledAmount.toFixed(1);
+      displayAmount =
+        scaledAmount % 1 < 0.1 || scaledAmount % 1 > 0.9
+          ? Math.round(scaledAmount).toString()
+          : scaledAmount.toFixed(1);
     }
 
     return {
@@ -169,7 +171,8 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                     −
                   </button>
                   <div className="text-xl font-bold min-w-[60px] text-center">
-                    {currentServings} {currentServings === 1 ? "Person" : "People"}
+                    {currentServings}{" "}
+                    {currentServings === 1 ? "Person" : "People"}
                   </div>
                   <button
                     onClick={() => adjustServings(1)}
@@ -181,28 +184,34 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 </div>
               </div>
             )}
-            {recipe.prepTime && (
+            {recipe.prepTime !== undefined && recipe.prepTime > 0 && (
               <div>
                 <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
                   Prep Time
                 </div>
-                <div className="text-xl font-bold">{recipe.prepTime}</div>
+                <div className="text-xl font-bold">
+                  {formatMinutes(recipe.prepTime)}
+                </div>
               </div>
             )}
-            {recipe.cookTime && (
+            {recipe.cookTime !== undefined && recipe.cookTime > 0 && (
               <div>
                 <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
                   Cook Time
                 </div>
-                <div className="text-xl font-bold">{recipe.cookTime}</div>
+                <div className="text-xl font-bold">
+                  {formatMinutes(recipe.cookTime)}
+                </div>
               </div>
             )}
-            {recipe.totalTime && (
+            {recipe.totalTime !== undefined && recipe.totalTime > 0 && (
               <div>
                 <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
                   Total Time
                 </div>
-                <div className="text-xl font-bold">{recipe.totalTime}</div>
+                <div className="text-xl font-bold">
+                  {formatMinutes(recipe.totalTime)}
+                </div>
               </div>
             )}
           </div>
@@ -709,7 +718,11 @@ function getIngredientEmoji(item: string): string {
     lowercaseItem.includes("pineapples")
   )
     return "🍍";
-  if (lowercaseItem.includes("mango") || lowercaseItem.includes("mangos") || lowercaseItem.includes("mangoes"))
+  if (
+    lowercaseItem.includes("mango") ||
+    lowercaseItem.includes("mangos") ||
+    lowercaseItem.includes("mangoes")
+  )
     return "🥭";
   if (lowercaseItem.includes("peach") || lowercaseItem.includes("peaches"))
     return "🍑";
@@ -887,8 +900,8 @@ function formatRecipeAsText(recipe: Recipe): string {
 
   const stats = [];
   if (recipe.servings) stats.push(`Servings: ${recipe.servings}`);
-  if (recipe.prepTime) stats.push(`Prep: ${recipe.prepTime}`);
-  if (recipe.cookTime) stats.push(`Cook: ${recipe.cookTime}`);
+  if (recipe.prepTime) stats.push(`Prep: ${formatMinutes(recipe.prepTime)}`);
+  if (recipe.cookTime) stats.push(`Cook: ${formatMinutes(recipe.cookTime)}`);
   if (stats.length > 0) {
     text += `${stats.join(" | ")}\n\n`;
   }

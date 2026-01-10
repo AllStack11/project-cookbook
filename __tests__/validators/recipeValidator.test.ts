@@ -9,9 +9,9 @@ describe("recipeValidator", () => {
     title: "Chocolate Chip Cookies",
     description: "Delicious homemade cookies",
     servings: 24,
-    prepTime: "15 minutes",
-    cookTime: "12 minutes",
-    totalTime: "27 minutes",
+    prepTime: 15,
+    cookTime: 12,
+    totalTime: 27,
     ingredients: [
       { item: "all-purpose flour", amount: "2 1/4", unit: "cups" },
       { item: "butter", amount: "1", unit: "cup" },
@@ -179,9 +179,9 @@ describe("recipeValidator", () => {
       const recipe = {
         ...validRecipe,
         servings: undefined,
-        prepTime: "",
-        cookTime: "",
-        totalTime: "",
+        prepTime: undefined,
+        cookTime: undefined,
+        totalTime: undefined,
       };
       const result = validateRecipe(recipe as any);
       expect(result.isValid).toBe(false);

@@ -51,11 +51,47 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
 
     // Ensure mandatory metadata has defaults if missing
     if (!parsed.servings) parsed.servings = 4;
-    if (!parsed.prepTime) parsed.prepTime = "15 mins";
-    if (!parsed.cookTime) parsed.cookTime = "20 mins";
+
+    // Convert string times to numbers if they exist (backward compatibility for cache)
+    const parseTimeToMinutes = (time: any): number | undefined => {
+      if (typeof time === "number") return time;
+      if (typeof time !== "string") return undefined;
+
+      // Extract first number found in string
+      const match = time.match(/\d+/);
+      if (match) {
+        const value = parseInt(match[0], 10);
+        // Handle "1 hour" -> 60
+        if (
+          time.toLowerCase().includes("hour") &&
+          !time.toLowerCase().includes("15") &&
+          !time.toLowerCase().includes("30") &&
+          !time.toLowerCase().includes("45")
+        ) {
+          // Basic hour detection, if it's just "1 hour" or "2 hours"
+          // But we should be careful. For now, let's keep it simple.
+          // If "hour" is present and value is small, it's likely hours.
+          if (value < 10) return value * 60;
+        }
+        return value;
+      }
+      return undefined;
+    };
+
+    if (parsed.prepTime !== undefined) {
+      parsed.prepTime = parseTimeToMinutes(parsed.prepTime);
+    }
+    if (parsed.cookTime !== undefined) {
+      parsed.cookTime = parseTimeToMinutes(parsed.cookTime);
+    }
+    if (parsed.totalTime !== undefined) {
+      parsed.totalTime = parseTimeToMinutes(parsed.totalTime);
+    }
+
+    if (!parsed.prepTime) parsed.prepTime = 15;
+    if (!parsed.cookTime) parsed.cookTime = 20;
     if (!parsed.totalTime) {
-      // Try to estimate total time if missing but others exist
-      parsed.totalTime = "35 mins";
+      parsed.totalTime = (parsed.prepTime || 0) + (parsed.cookTime || 0);
     }
 
     return {

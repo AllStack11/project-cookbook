@@ -30,7 +30,9 @@ Instructions:
 2. MANDATORY FIELDS: You MUST provide 'prepTime', 'cookTime', 'totalTime', and 'servings'.
    - If these are not explicitly mentioned in the content, you MUST infer/estimate them based on the recipe's complexity and typical standards for the dish.
    - 'totalTime' should be the sum of 'prepTime' and 'cookTime'.
-   - Use standard formats like "15 mins", "1 hour", etc. For servings, provide a single number.
+   - IMPORTANT: 'prepTime', 'cookTime', and 'totalTime' MUST be provided as total minutes (integers). NEVER provide them as strings or paragraphs.
+   - For example, if a recipe takes 1 hour and 15 minutes total, 'totalTime' should be 75.
+   - For servings, provide a single number.
 3. INSTRUCTIONS MUST BE GRANULAR AND DETAILED (teach like you're instructing a culinary class):
    - Write as if you're demonstrating the recipe to a student standing beside you in the kitchen
    - Break down vague steps into specific, actionable sub-steps with professional technique
@@ -94,7 +96,7 @@ Instructions:
    - Explain WHY certain steps matter when it adds clarity
    - Use chef's language and terminology where appropriate
    - Make steps clear enough for a novice cook to follow successfully with confidence
-5. Estimate prep time, cook time, and servings.
+5. Estimate prep time, cook time (both as total minutes, e.g., 30), and servings.
 6. Suggest a high-quality placeholder image URL from Unsplash that matches the dish (e.g., https://source.unsplash.com/800x600/?food,dishname).
 7. Flag this recipe by setting "isGenerated": true in the JSON.
 

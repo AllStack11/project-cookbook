@@ -28,6 +28,22 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Fix: Resolved Vercel deployment "Invalid Version" error
+  - **Type**: Bug Fix / Deployment
+  - **Description**: Fixed a persistent npm install failure on Vercel caused by the `unrs-resolver` package (v1.11.1) having an invalid/empty version in its `@unrs/resolver-binding-linux-arm64-musl` platform binding on npm registry.
+    - **Root Cause**: The `unrs-resolver` package (used by ESLint and Jest) had a corrupted platform-specific binding for Vercel's Linux ARM64 musl environment.
+    - **Solution**: Added npm `overrides` in package.json to pin `unrs-resolver` to v1.7.2, which has working platform bindings.
+    - **Additional Changes**:
+      - Set `engines.node` to `22.x` for consistency with local development environment
+      - Added `installCommand: "npm install"` to vercel.json
+      - Regenerated package-lock.json with the override applied
+  - **Impact**: Successfully deployed to Vercel. The override should be periodically reviewed and removed once newer versions of `unrs-resolver` fix the platform binding issue.
+
+- **2026-01-10**: Refactor: Strongly typed recipe time fields
+  - **Type**: Refactor
+  - **Description**: Changed `prepTime`, `cookTime`, and `totalTime` in the `Recipe` interface from strings to numbers (minutes). Updated LLM extraction schema and prompts to enforce numeric minute values. Added a `timeFormatter` utility for UI display.
+  - **Impact**: Eliminates conversational paragraphs in time fields and ensures consistent time estimates across all recipes. Improves data integrity and UI consistency.
+
 - **2026-01-10**: Fix: Fixed Vercel deployment warnings by updating all deprecated and outdated packages.
   - **Type**: Optimization / Bug Fix
   - **Description**: Upgraded the entire dependency stack to latest stable versions, resolving numerous deprecation warnings and security vulnerabilities.

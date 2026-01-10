@@ -21,6 +21,11 @@ const nextConfig = {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_ADSENSE_CLIENT_ID: process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID,
   },
+  // Include @sparticuz/chromium binaries in serverless functions
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  outputFileTracingIncludes: {
+    "/api/extract": ["./node_modules/@sparticuz/chromium/**/*"],
+  },
 };
 
 module.exports = nextConfig;

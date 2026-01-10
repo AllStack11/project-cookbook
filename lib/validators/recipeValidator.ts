@@ -155,24 +155,24 @@ export function validateRecipe(recipe: Recipe): RecipeValidationResult {
     });
   }
 
-  if (!recipe.prepTime || recipe.prepTime.trim().length === 0) {
+  if (recipe.prepTime === undefined || recipe.prepTime < 0) {
     errors.push({
       field: "prepTime",
-      message: "Prep time is required",
+      message: "Prep time is required and must be a non-negative number",
     });
   }
 
-  if (!recipe.cookTime || recipe.cookTime.trim().length === 0) {
+  if (recipe.cookTime === undefined || recipe.cookTime < 0) {
     errors.push({
       field: "cookTime",
-      message: "Cook time is required",
+      message: "Cook time is required and must be a non-negative number",
     });
   }
 
-  if (!recipe.totalTime || recipe.totalTime.trim().length === 0) {
+  if (recipe.totalTime === undefined || recipe.totalTime < 0) {
     errors.push({
       field: "totalTime",
-      message: "Total time is required",
+      message: "Total time is required and must be a non-negative number",
     });
   }
 
@@ -302,9 +302,9 @@ export function calculateConfidenceScore(recipe: Recipe): number {
 
   // Metadata completeness (20 points)
   if (recipe.servings && recipe.servings > 0) score += 5;
-  if (recipe.prepTime && recipe.prepTime.trim().length > 0) score += 5;
-  if (recipe.cookTime && recipe.cookTime.trim().length > 0) score += 5;
-  if (recipe.totalTime && recipe.totalTime.trim().length > 0) score += 5;
+  if (recipe.prepTime !== undefined && recipe.prepTime > 0) score += 5;
+  if (recipe.cookTime !== undefined && recipe.cookTime > 0) score += 5;
+  if (recipe.totalTime !== undefined && recipe.totalTime > 0) score += 5;
 
   // Nutrition data (10 points)
   if (recipe.nutrition) {

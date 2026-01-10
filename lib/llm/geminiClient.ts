@@ -47,16 +47,17 @@ const recipeSchema: ResponseSchema = {
       description: "Number of servings",
     },
     prepTime: {
-      type: SchemaType.STRING,
-      description: "Preparation time (e.g., '15 min')",
+      type: SchemaType.NUMBER,
+      description: "Preparation time in total minutes as an integer (e.g., 15)",
     },
     cookTime: {
-      type: SchemaType.STRING,
-      description: "Cooking time (e.g., '30 min')",
+      type: SchemaType.NUMBER,
+      description: "Cooking time in total minutes as an integer (e.g., 30)",
     },
     totalTime: {
-      type: SchemaType.STRING,
-      description: "Total time (e.g., '45 min')",
+      type: SchemaType.NUMBER,
+      description:
+        "Total time in total minutes as an integer (sum of prep and cook, e.g., 45)",
     },
     ingredients: {
       type: SchemaType.ARRAY,

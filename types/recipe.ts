@@ -20,9 +20,9 @@ export interface Recipe {
   title: string;
   description?: string;
   servings?: number;
-  prepTime?: string;
-  cookTime?: string;
-  totalTime?: string;
+  prepTime?: number;
+  cookTime?: number;
+  totalTime?: number;
   ingredients: Ingredient[];
   instructions: Instruction[];
   notes?: string[];
