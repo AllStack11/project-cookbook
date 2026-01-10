@@ -177,7 +177,8 @@ export async function POST(request: NextRequest) {
 
         if (
           !result.success &&
-          result.error?.includes("No transcript available")
+          (result.error?.toLowerCase().includes("no transcript available") ||
+            result.error?.toLowerCase().includes("transcript is disabled"))
         ) {
           logger.info("Transcript unavailable, falling back to description", {
             videoId,
