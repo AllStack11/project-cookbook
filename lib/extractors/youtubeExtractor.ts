@@ -13,6 +13,109 @@ export interface YoutubeExtractResult {
     duration?: number;
     source: "transcript" | "description" | "youtube-api" | "captions";
   };
+  externalRecipeUrl?: string; // Detected recipe link to follow
+}
+
+/**
+ * Detect external recipe URLs in YouTube description
+ * Common patterns: blog posts, recipe websites, etc.
+ */
+function detectRecipeUrl(description: string): string | null {
+  if (!description || description.length === 0) return null;
+
+  // Common recipe site domains
+  const recipeHosts = [
+    "allrecipes.com",
+    "foodnetwork.com",
+    "epicurious.com",
+    "bonappetit.com",
+    "seriouseats.com",
+    "simplyrecipes.com",
+    "tasty.co",
+    "delish.com",
+    "food.com",
+    "yummly.com",
+    "cookieandkate.com",
+    "minimalistbaker.com",
+    "budgetbytes.com",
+    "recipetineats.com",
+    "kingarthurbaking.com",
+    "thekitchn.com",
+    "saveur.com",
+    "cooking.nytimes.com",
+    "myrecipes.com",
+    "bettycrocker.com",
+    "pillsbury.com",
+  ];
+
+  // Extract all URLs from description
+  const urlRegex = /https?:\/\/[^\s\)]+/gi;
+  const urls = description.match(urlRegex) || [];
+
+  for (const url of urls) {
+    try {
+      const urlObj = new URL(url.replace(/[.,;]$/, "")); // Remove trailing punctuation
+      const hostname = urlObj.hostname.replace(/^www\./, "");
+
+      // Check if it's a known recipe site
+      if (recipeHosts.some((host) => hostname.includes(host))) {
+        logger.info("Detected known recipe site URL in description", {
+          url: urlObj.href,
+          hostname,
+        });
+        return urlObj.href;
+      }
+
+      // Check for recipe-related paths
+      const path = urlObj.pathname.toLowerCase();
+      if (
+        path.includes("/recipe") ||
+        path.includes("/recipes") ||
+        path.includes("/cooking")
+      ) {
+        logger.info("Detected recipe-related URL in description", {
+          url: urlObj.href,
+        });
+        return urlObj.href;
+      }
+    } catch {
+      // Invalid URL, continue
+      continue;
+    }
+  }
+
+  // Check for recipe-related text patterns near URLs
+  for (const url of urls) {
+    const urlIndex = description.indexOf(url);
+    const contextBefore = description
+      .substring(Math.max(0, urlIndex - 100), urlIndex)
+      .toLowerCase();
+    const contextAfter = description
+      .substring(urlIndex, Math.min(description.length, urlIndex + 100))
+      .toLowerCase();
+    const context = contextBefore + contextAfter;
+
+    if (
+      context.includes("full recipe") ||
+      context.includes("get the recipe") ||
+      context.includes("recipe link") ||
+      context.includes("written recipe") ||
+      context.includes("recipe below") ||
+      context.includes("blog post") ||
+      context.includes("recipe here")
+    ) {
+      try {
+        const cleanUrl = url.replace(/[.,;]$/, "");
+        new URL(cleanUrl); // Validate
+        logger.info("Detected recipe URL by context clues", { url: cleanUrl });
+        return cleanUrl;
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -508,9 +611,39 @@ ${tags ? `\nTags: ${tags}` : ""}
       contentLength: processed.text.length,
     });
 
+    // Log extracted content for debugging
+    logger.debug("Extracted YouTube content preview", {
+      videoId,
+      title: title.substring(0, 100),
+      descriptionLength: description.length,
+      descriptionPreview: description.substring(0, 300),
+      fullContent: processed.text.substring(0, 500),
+    });
+
+    // Check if description is too sparse and contains an external recipe link
+    const externalRecipeUrl = detectRecipeUrl(description);
+    if (externalRecipeUrl && description.length < 300) {
+      logger.info("Description is sparse but contains external recipe URL", {
+        videoId,
+        descriptionLength: description.length,
+        externalRecipeUrl,
+      });
+
+      return {
+        success: true,
+        content: processed.text,
+        externalRecipeUrl,
+        metadata: {
+          videoId,
+          source: "youtube-api",
+        },
+      };
+    }
+
     return {
       success: true,
       content: processed.text,
+      externalRecipeUrl: externalRecipeUrl || undefined,
       metadata: {
         videoId,
         source: "youtube-api",

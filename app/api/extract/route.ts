@@ -214,7 +214,77 @@ export async function POST(request: NextRequest) {
             { status: StatusCode.INTERNAL_SERVER_ERROR }
           );
         }
-        content = result.content!;
+
+        // Check if YouTube description contains an external recipe link
+        if (result.externalRecipeUrl) {
+          logger.info("YouTube description contains external recipe URL, following it", {
+            videoId,
+            externalUrl: result.externalRecipeUrl,
+            descriptionLength: result.content?.length || 0,
+          });
+
+          // Import web scraper
+          const { extractStructuredRecipe } = await import("@/lib/extractors/webScraper");
+
+          const webStart = Date.now();
+          const webResult = await extractStructuredRecipe(result.externalRecipeUrl);
+          logger.perf("External recipe URL extraction", Date.now() - webStart);
+
+          if (webResult.success && webResult.recipe) {
+            const validation = validateRecipe(webResult.recipe);
+            const hasEnoughIngredients = webResult.recipe.ingredients.length >= 3;
+            const hasEnoughInstructions = webResult.recipe.instructions.length >= 3;
+
+            if (validation.isValid && hasEnoughIngredients && hasEnoughInstructions) {
+              logger.info("🚀 Successfully extracted recipe from external URL (structured data bypass)");
+              const recipe = webResult.recipe;
+
+              recipe.confidenceScore = calculateConfidenceScore(recipe);
+              recipe.sourcePlatform = SourceType.YOUTUBE; // Keep original source as YouTube
+              recipe.sourceUrl = url; // Original YouTube URL
+
+              await setCachedRecipe(url, recipe);
+              await saveRecipeToLongTermStorage(
+                recipe,
+                {
+                  ipAddress: ip,
+                  userAgent: request.headers.get("user-agent") || undefined,
+                  country: request.headers.get("x-vercel-ip-country") || undefined,
+                  region: request.headers.get("x-vercel-ip-country-region") || undefined,
+                  isSuspicious,
+                },
+                url
+              );
+              await incrementRateLimit(ip);
+
+              return NextResponse.json({
+                success: true,
+                recipe,
+                metadata: {
+                  cacheHit: false,
+                  modelUsed: "structured-data-bypass",
+                  processingTime: Date.now() - overallStart,
+                  externalRecipeUrl: result.externalRecipeUrl,
+                },
+              });
+            }
+          }
+
+          // If structured extraction succeeded but didn't have good data, use it as content
+          if (webResult.success && webResult.content) {
+            logger.info("Using external recipe URL content for LLM extraction");
+            content = webResult.content;
+            sourceType = SourceType.BLOG; // Change source type for better prompting
+          } else {
+            // External URL failed, fall back to YouTube description
+            logger.warn("External recipe URL extraction failed, using YouTube description", {
+              error: webResult.error,
+            });
+            content = result.content!;
+          }
+        } else {
+          content = result.content!;
+        }
 
         // Sanitize extracted content
         const contentCheck = validateInputContent(content);
@@ -236,6 +306,7 @@ export async function POST(request: NextRequest) {
         logger.info("YouTube content extracted", {
           contentLength: content.length,
           source: result.metadata?.videoId ? "transcript" : "description",
+          hadExternalUrl: !!result.externalRecipeUrl,
         });
       } else {
         logger.info("Extracting web content");
@@ -388,6 +459,13 @@ export async function POST(request: NextRequest) {
       promptLength: prompt.length,
       contentLength: content.length,
       estimatedInputTokens: Math.ceil(prompt.length / 4),
+    });
+
+    // Log content preview for debugging
+    logger.debug("Content preview being sent to LLM", {
+      contentPreview: content.substring(0, 500),
+      contentLength: content.length,
+      sourceType,
     });
 
     // Call LLM (Gemini only)
