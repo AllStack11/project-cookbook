@@ -28,12 +28,13 @@ Each entry should include:
 
 ## Log Entries
 
-- **2026-01-10**: Feature: Vercel KV Caching & Rate Limiting
-  - **Type**: Optimization
-  - **Description**: Migrated in-memory `Map` caching and rate limiting to Vercel KV (Upstash Redis).
-    - Updated `lib/cache/cacheClient.ts` to use `kv.get` and `kv.set` with TTL.
-    - Updated `lib/utils/rateLimiter.ts` to use atomic Redis operations (`incr`, `expire`) and list-based recent request tracking.
-  - **Impact**: Persistent caching across serverless instances, accurate global rate limiting, and improved cost efficiency for LLM calls.
+- **2026-01-10**: Feature: Long-term Storage & Vercel KV Caching
+  - **Type**: Feature / Optimization
+  - **Description**: Implemented a multi-tier storage system using Vercel KV for short-term caching and Neon Postgres for long-term data collection.
+    - Migrated short-term cache and rate limiting to Vercel KV (Upstash Redis) for persistence across serverless instances.
+    - Integrated Neon Postgres using Drizzle ORM to archive every successful extraction for future analytics.
+    - Implemented atomic Redis operations for robust rate limiting.
+  - **Impact**: Improved cost efficiency through persistent caching and established a durable data collection foundation for recipe trends and analytics.
 
 - **2026-01-10**: Replaced `youtubei.js` with `youtube-transcript` library to improve transcript hit rates. Refactored `youtubeExtractor.ts` to use the new library as the primary extraction method while maintaining multi-tier fallbacks (Direct TimedText, YouTube Data API, and Description Scraping).
 - **2026-01-10**: Added official YouTube Data API v3 fallback to `youtubeExtractor.ts`. This provides a reliable method for fetching video metadata and descriptions when scraping methods fail, while managing API quota by keeping it as a secondary fallback.

@@ -16,6 +16,7 @@ import {
 } from "@/lib/llm/promptBuilder";
 import { selectModel } from "@/lib/llm/modelSelector";
 import { getCachedRecipe, setCachedRecipe } from "@/lib/cache/cacheClient";
+import { saveRecipeToLongTermStorage } from "@/lib/db";
 import {
   checkRateLimit,
   incrementRateLimit,
@@ -262,6 +263,14 @@ export async function POST(request: NextRequest) {
             recipe.sourcePlatform = sourceType;
 
             await setCachedRecipe(url, recipe);
+            await saveRecipeToLongTermStorage(recipe, {
+              ipAddress: ip,
+              userAgent: request.headers.get("user-agent") || undefined,
+              country: request.headers.get("x-vercel-ip-country") || undefined,
+              region:
+                request.headers.get("x-vercel-ip-country-region") || undefined,
+              isSuspicious,
+            });
             await incrementRateLimit(ip);
 
             return NextResponse.json({
@@ -510,6 +519,15 @@ export async function POST(request: NextRequest) {
       logger.perf("Cache storage", Date.now() - cacheStart);
       logger.debug("Recipe cached", { url: sourceUrl.substring(0, 100) });
     }
+
+    // Always save to long-term storage for data collection
+    await saveRecipeToLongTermStorage(recipe, {
+      ipAddress: ip,
+      userAgent: request.headers.get("user-agent") || undefined,
+      country: request.headers.get("x-vercel-ip-country") || undefined,
+      region: request.headers.get("x-vercel-ip-country-region") || undefined,
+      isSuspicious,
+    });
 
     // Increment rate limit
     await incrementRateLimit(ip);
