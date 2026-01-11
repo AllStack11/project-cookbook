@@ -25,14 +25,15 @@ export interface UserMetadata {
 
 export async function saveRecipeToLongTermStorage(
   recipe: Recipe,
-  userMetadata?: UserMetadata
+  userMetadata?: UserMetadata,
+  explicitSourceUrl?: string
 ) {
   if (!process.env.DATABASE_URL) return;
 
   try {
     await db.insert(recipes).values({
       title: recipe.title,
-      sourceUrl: recipe.sourceUrl || null,
+      sourceUrl: explicitSourceUrl || recipe.sourceUrl || null,
       sourcePlatform: recipe.sourcePlatform || "unknown",
       confidenceScore: recipe.confidenceScore || null,
       data: recipe,

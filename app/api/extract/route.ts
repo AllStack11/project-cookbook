@@ -263,14 +263,20 @@ export async function POST(request: NextRequest) {
             recipe.sourcePlatform = sourceType;
 
             await setCachedRecipe(url, recipe);
-            await saveRecipeToLongTermStorage(recipe, {
-              ipAddress: ip,
-              userAgent: request.headers.get("user-agent") || undefined,
-              country: request.headers.get("x-vercel-ip-country") || undefined,
-              region:
-                request.headers.get("x-vercel-ip-country-region") || undefined,
-              isSuspicious,
-            });
+            await saveRecipeToLongTermStorage(
+              recipe,
+              {
+                ipAddress: ip,
+                userAgent: request.headers.get("user-agent") || undefined,
+                country:
+                  request.headers.get("x-vercel-ip-country") || undefined,
+                region:
+                  request.headers.get("x-vercel-ip-country-region") ||
+                  undefined,
+                isSuspicious,
+              },
+              url
+            );
             await incrementRateLimit(ip);
 
             return NextResponse.json({
@@ -521,13 +527,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Always save to long-term storage for data collection
-    await saveRecipeToLongTermStorage(recipe, {
-      ipAddress: ip,
-      userAgent: request.headers.get("user-agent") || undefined,
-      country: request.headers.get("x-vercel-ip-country") || undefined,
-      region: request.headers.get("x-vercel-ip-country-region") || undefined,
-      isSuspicious,
-    });
+    // Note: for text input, sourceUrl will be empty string, which is correct
+    await saveRecipeToLongTermStorage(
+      recipe,
+      {
+        ipAddress: ip,
+        userAgent: request.headers.get("user-agent") || undefined,
+        country: request.headers.get("x-vercel-ip-country") || undefined,
+        region: request.headers.get("x-vercel-ip-country-region") || undefined,
+        isSuspicious,
+      },
+      sourceUrl || undefined
+    );
 
     // Increment rate limit
     await incrementRateLimit(ip);
