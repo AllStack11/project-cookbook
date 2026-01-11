@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "22.x"
+    "node": ">=22.x"
   },
   "overrides": {
-    "unrs-resolver": "1.7.2"
+    "unrs-resolver": "1.7.11"
   },
   "scripts": {
     "dev": "next dev",
