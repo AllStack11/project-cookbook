@@ -28,6 +28,21 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Improved Cache Normalization Logic
+  - **Type**: Optimization
+  - **Description**: Refactored `normalizeUrl` in `cacheClient.ts` to be more aggressive with query parameter stripping. Added platform-specific normalization for YouTube (unifying short and long links), Instagram, and TikTok. Implemented a whitelist approach for generic blog parameters.
+  - **Impact**: Significant increase in cache hit rate for URLs with tracking parameters or platform-specific variations. Reduces LLM API costs.
+
+- **2026-01-10**: Feature: 5-second client-side delay for cache hits
+  - **Type**: Feature / UX
+  - **Description**: Implemented a 5-second delay on the client side when a cache hit is detected. This ensures the loading state persists for a consistent duration, providing a more predictable user experience without affecting server-side performance.
+  - **Impact**: Better matches user expectations for processing time even when data is already cached.
+
+- **2026-01-10**: Fix: Force scroll to top on refresh
+  - **Type**: Bug Fix / UX
+  - **Description**: Implemented a `useEffect` hook in the main page to force the browser to scroll to the top of the page on refresh. Set `history.scrollRestoration` to `manual` to override browser-default scroll position restoration.
+  - **Impact**: Ensures a consistent and predictable user experience where the app always starts at the top of the page after a refresh, rather than staying scrolled down.
+
 - **2026-01-10**: Feature: Long-term Storage & Vercel KV Caching
   - **Type**: Feature / Optimization
   - **Description**: Implemented a multi-tier storage system using Vercel KV for short-term caching and Neon Postgres for long-term data collection.

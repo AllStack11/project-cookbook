@@ -7,40 +7,95 @@ export const TTL_BLOG = 30 * 24 * 60 * 60; // 30 days
 export const TTL_SOCIAL = 7 * 24 * 60 * 60; // 7 days
 export const TTL_DEFAULT = TTL_BLOG;
 
+/**
+ * Normalizes a URL to ensure consistent cache keys.
+ * Handles tracking parameters, platform-specific formats (YouTube, Instagram, TikTok),
+ * and sorts query parameters.
+ */
 export function normalizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
-    // Remove common tracking parameters
-    const paramsToRemove = [
-      "utm_source",
-      "utm_medium",
-      "utm_campaign",
-      "utm_term",
-      "utm_content",
-      "fbclid",
-      "gclid",
-      "msclkid",
-      "mc_eid",
-      "v", // Some video platforms use this for player version
-    ];
 
-    // Special handling for YouTube - keep 'v' for video ID, but strip others
-    if (
-      parsed.hostname.includes("youtube.com") ||
-      parsed.hostname === "youtu.be"
-    ) {
-      const searchParams = parsed.searchParams;
-      const videoId = searchParams.get("v");
-      const normalized = new URL(parsed.origin + parsed.pathname);
-      if (videoId) normalized.searchParams.set("v", videoId);
-      return normalized.toString().toLowerCase().trim();
+    // 1. Platform Specific Normalization
+    const hostname = parsed.hostname.toLowerCase();
+
+    // YouTube: Normalize all formats to https://www.youtube.com/watch?v=VIDEO_ID
+    if (hostname.includes("youtube.com") || hostname === "youtu.be") {
+      let videoId = parsed.searchParams.get("v");
+
+      // Handle youtu.be/VIDEO_ID
+      if (!videoId && hostname === "youtu.be") {
+        videoId = parsed.pathname.substring(1);
+      }
+
+      // Handle youtube.com/shorts/VIDEO_ID or youtube.com/embed/VIDEO_ID
+      if (!videoId) {
+        const parts = parsed.pathname.split("/");
+        if (
+          parts.includes("shorts") ||
+          parts.includes("embed") ||
+          parts.includes("v")
+        ) {
+          videoId = parts[parts.length - 1];
+        }
+      }
+
+      if (videoId) {
+        return `https://www.youtube.com/watch?v=${videoId.toLowerCase()}`;
+      }
     }
 
-    paramsToRemove.forEach((param) => parsed.searchParams.delete(param));
-    // Sort parameters to ensure consistent key generation
-    parsed.searchParams.sort();
+    // Instagram: Strip everything except the path (post ID)
+    if (hostname.includes("instagram.com")) {
+      const normalized = new URL(parsed.origin + parsed.pathname);
+      // Remove trailing slash for consistency
+      let path = normalized.pathname;
+      if (path.endsWith("/")) path = path.slice(0, -1);
+      return (parsed.origin + path).toLowerCase();
+    }
 
-    return parsed.toString().toLowerCase().trim();
+    // TikTok: Strip tracking params, usually the path is enough
+    if (hostname.includes("tiktok.com")) {
+      const normalized = new URL(parsed.origin + parsed.pathname);
+      return normalized.toString().toLowerCase();
+    }
+
+    // 2. Generic Normalization for Blogs and other sites
+    // Whitelist approach: Only keep parameters that likely define content
+    const essentialParams = [
+      "p", // WordPress post ID
+      "id", // Generic ID
+      "page", // Pagination
+      "recipe_id", // Specific to some sites
+      "article", // Generic article ID
+    ];
+
+    const newParams = new URLSearchParams();
+    essentialParams.forEach((param) => {
+      const value = parsed.searchParams.get(param);
+      if (value) {
+        newParams.append(param, value);
+      }
+    });
+
+    // Sort essential parameters
+    newParams.sort();
+
+    const result = new URL(parsed.origin + parsed.pathname);
+    newParams.forEach((value, key) => {
+      result.searchParams.set(key, value);
+    });
+
+    // Final cleanup: remove trailing slash and lowercase
+    let finalUrl = result.toString().toLowerCase();
+    if (finalUrl.endsWith("/") && !parsed.pathname.endsWith("/")) {
+      // Keep it if the original had it (some sites depend on it)
+    } else if (finalUrl.endsWith("/") && finalUrl.split("/").length > 3) {
+      // Generally safe to strip trailing slash for canonicalization on deep paths
+      finalUrl = finalUrl.slice(0, -1);
+    }
+
+    return finalUrl.trim();
   } catch (e) {
     return url.toLowerCase().trim();
   }

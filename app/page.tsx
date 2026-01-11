@@ -20,6 +20,14 @@ export default function Home() {
   const loadingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Force scroll to top on refresh/load
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     if (isLoading && loadingRef.current) {
       loadingRef.current.scrollIntoView({
         behavior: "smooth",
@@ -45,6 +53,10 @@ export default function Home() {
       const data = await response.json();
 
       if (data.success) {
+        // If it's a cache hit, add an artificial 5-second delay on the client side
+        if (data.metadata?.cacheHit) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
         setRecipe(data.recipe);
       } else {
         setError({
