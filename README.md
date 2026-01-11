@@ -160,6 +160,32 @@ The app implements several cost-saving strategies:
 3. **Efficient Model**: Use gemini-2.5-flash-lite for fast, cost-effective extractions
 4. **Rate Limiting**: Prevent abuse with 10 requests/day free tier
 
+## Logging & Monitoring
+
+**Vercel Native Logs** - No external service required for basic logging:
+
+- All logs automatically captured by Vercel and available in your dashboard
+- Structured JSON format for easy searching and filtering
+- Search by context, level, custom fields (cache hits, token usage, etc.)
+- Track cost metrics: LLM usage, cache hit rate, processing times
+- **Free** on Vercel (1-hour retention) or add Log Drains for long-term storage
+
+**Quick Setup:**
+1. Deploy to Vercel (logs automatically captured - **no configuration needed!**)
+2. View at: `Vercel Dashboard → Your Project → Logs`
+3. Search for cost metrics: `message:"[COST]"`
+4. Monitor cache hits: `data.cacheHit:true`
+5. (Optional) Set `LOG_LEVEL=INFO` in Vercel for custom control
+
+**📖 For detailed logging guide, see [LOGGING.md](LOGGING.md) or [simplified guide](docs/LOGGING_SIMPLIFIED.md)**
+
+This includes:
+- Logger API reference and examples
+- Cost tracking patterns for LLM optimization
+- Vercel log search queries
+- Optional Log Drains setup (Better Stack, Datadog, etc.)
+- Best practices for structured logging
+
 ## Environment Variables
 
 See [.env.example](.env.example) for all available environment variables.

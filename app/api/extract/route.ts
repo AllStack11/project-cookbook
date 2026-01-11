@@ -163,6 +163,12 @@ export async function POST(request: NextRequest) {
 
       if (cachedRecipe) {
         logger.info("✓ Cache HIT - returning cached recipe");
+        logger.cost("Recipe served from cache", {
+          cacheHit: true,
+          modelUsed: "cached",
+          tokensUsed: 0,
+          estimatedCost: 0,
+        });
         return NextResponse.json({
           success: true,
           recipe: cachedRecipe,
@@ -396,6 +402,13 @@ export async function POST(request: NextRequest) {
         tokensUsed: llmResponse.tokensUsed,
         responseLength: llmResponse.content.length,
         duration: llmDuration,
+      });
+
+      // Track LLM cost metrics
+      logger.cost("LLM extraction completed", {
+        tokensUsed: llmResponse.tokensUsed,
+        modelUsed: model,
+        cacheHit: false,
       });
     } catch (error) {
       const llmDuration = Date.now() - llmStart;
