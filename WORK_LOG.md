@@ -28,6 +28,13 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Feature: Vercel KV Caching & Rate Limiting
+  - **Type**: Optimization
+  - **Description**: Migrated in-memory `Map` caching and rate limiting to Vercel KV (Upstash Redis).
+    - Updated `lib/cache/cacheClient.ts` to use `kv.get` and `kv.set` with TTL.
+    - Updated `lib/utils/rateLimiter.ts` to use atomic Redis operations (`incr`, `expire`) and list-based recent request tracking.
+  - **Impact**: Persistent caching across serverless instances, accurate global rate limiting, and improved cost efficiency for LLM calls.
+
 - **2026-01-10**: Replaced `youtubei.js` with `youtube-transcript` library to improve transcript hit rates. Refactored `youtubeExtractor.ts` to use the new library as the primary extraction method while maintaining multi-tier fallbacks (Direct TimedText, YouTube Data API, and Description Scraping).
 - **2026-01-10**: Added official YouTube Data API v3 fallback to `youtubeExtractor.ts`. This provides a reliable method for fetching video metadata and descriptions when scraping methods fail, while managing API quota by keeping it as a secondary fallback.
 - **2026-01-10**: Feature: Multi-layer URL and Content Pre-detection
@@ -449,8 +456,6 @@ Each entry should include:
     - Increased tactile feedback: Deeper hover shadows and a more pronounced `active:scale`.
     - Synchronized timing: Extended the animation and state duration to 600ms for a more deliberate feel.
   - **Impact**: Significantly heightened the perceived importance and tactile satisfaction of the primary "Extract" action.
-    > > > > > > > SEARCH
-- **2026-01-08: Implementation: Mandatory Recipe Metadata**
 
 - **2026-01-08: Implementation: Mandatory Recipe Metadata**
   - **Type**: Feature / Logic Enhancement
@@ -479,11 +484,8 @@ Each entry should include:
   - Increased token leeway: Raised source-specific token limits in `lib/utils/tokenCounter.ts` (Blog: 2.5k, YouTube: 4k) to handle complex content better.
   - Refined LLM bypass: Added ingredient/instruction count checks to structured data bypass in `app/api/extract/route.ts` to ensure only high-quality data triggers a bypass.
   - Refined content validation and cost minimization.
-    > > > > > > >
   - Loosened content validation rules: Removed overly broad patterns like "instead of", "disregard", and "script" which were causing false positives on valid recipes and structured data.
-    > > > > > > >
   - Implemented comprehensive cost minimization strategies.
-    > > > > > > >
   - Aggressive content preprocessing: Stripped social media links, newsletter signups, and affiliate disclosures.
   - Prompt optimization: Condensed extraction and fallback prompts by ~40% to reduce input tokens.
   - LLM Bypass: Added direct extraction from high-quality JSON-LD structured data, bypassing LLM calls when scraped data is sufficient.

@@ -1,19 +1,11 @@
 import { Recipe } from "@/types/recipe";
 import { createHash } from "crypto";
+import { kv } from "@vercel/kv";
 
-export interface CacheEntry {
-  recipe: Recipe;
-  timestamp: number;
-  sourceUrl: string;
-}
-
-export const TTL_BLOG = 30 * 24 * 60 * 60 * 1000; // 30 days
-export const TTL_SOCIAL = 7 * 24 * 60 * 60 * 1000; // 7 days
+// TTLs in seconds for Redis
+export const TTL_BLOG = 30 * 24 * 60 * 60; // 30 days
+export const TTL_SOCIAL = 7 * 24 * 60 * 60; // 7 days
 export const TTL_DEFAULT = TTL_BLOG;
-
-// Simple in-memory cache for development
-// In production, use Redis or Vercel KV
-const cache = new Map<string, CacheEntry>();
 
 export function normalizeUrl(url: string): string {
   try {
@@ -60,23 +52,14 @@ export function generateCacheKey(url: string): string {
 }
 
 export async function getCachedRecipe(url: string): Promise<Recipe | null> {
-  const key = generateCacheKey(url);
-  const entry = cache.get(key);
-
-  if (!entry) {
+  try {
+    const key = generateCacheKey(url);
+    const recipe = await kv.get<Recipe>(`recipe:${key}`);
+    return recipe;
+  } catch (error) {
+    console.error("Cache get error:", error);
     return null;
   }
-
-  // Check if expired
-  const now = Date.now();
-  const age = now - entry.timestamp;
-
-  if (age > TTL_DEFAULT) {
-    cache.delete(key);
-    return null;
-  }
-
-  return entry.recipe;
 }
 
 export async function setCachedRecipe(
@@ -84,28 +67,22 @@ export async function setCachedRecipe(
   recipe: Recipe,
   ttl: number = TTL_DEFAULT
 ): Promise<void> {
-  const key = generateCacheKey(url);
-  cache.set(key, {
-    recipe,
-    timestamp: Date.now(),
-    sourceUrl: url,
-  });
-
-  // Auto-expire after TTL
-  // Note: setTimeout max is ~24.8 days (2^31-1 ms), so we skip it for long TTLs
-  // Expiry is still checked via timestamp in getCachedRecipe
-  const MAX_TIMEOUT = 2147483647; // Max 32-bit signed integer
-  if (ttl < MAX_TIMEOUT) {
-    setTimeout(() => {
-      cache.delete(key);
-    }, ttl);
+  try {
+    const key = generateCacheKey(url);
+    // Vercel KV set takes seconds for ex option
+    await kv.set(`recipe:${key}`, recipe, { ex: ttl });
+  } catch (error) {
+    console.error("Cache set error:", error);
   }
-  // For longer TTLs, rely on timestamp-based expiry check in getCachedRecipe
 }
 
 export async function invalidateCache(url: string): Promise<void> {
-  const key = generateCacheKey(url);
-  cache.delete(key);
+  try {
+    const key = generateCacheKey(url);
+    await kv.del(`recipe:${key}`);
+  } catch (error) {
+    console.error("Cache invalidate error:", error);
+  }
 }
 
 export async function getCacheStats(): Promise<{
@@ -113,9 +90,16 @@ export async function getCacheStats(): Promise<{
   hits: number;
   misses: number;
 }> {
-  return {
-    size: cache.size,
-    hits: 0, // Would track in production
-    misses: 0,
-  };
+  try {
+    // dbsize gives total keys in the database
+    const size = await kv.dbsize();
+    return {
+      size,
+      hits: 0, // KV doesn't provide easy hit/miss stats via REST API
+      misses: 0,
+    };
+  } catch (error) {
+    console.error("Cache stats error:", error);
+    return { size: 0, hits: 0, misses: 0 };
+  }
 }
