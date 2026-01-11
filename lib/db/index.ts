@@ -14,6 +14,7 @@ export const db = drizzle(sql, { schema });
 // Helper to save a recipe
 import { Recipe } from "@/types/recipe";
 import { recipes } from "./schema";
+import { normalizeUrl } from "@/lib/cache/cacheClient";
 
 export interface UserMetadata {
   ipAddress?: string;
@@ -21,6 +22,36 @@ export interface UserMetadata {
   country?: string;
   region?: string;
   isSuspicious?: boolean;
+}
+
+/**
+ * Basic string sanitation: trim, normalize whitespace, strip HTML tags
+ */
+function sanitizeString(str: string): string {
+  return str
+    .replace(/<[^>]*>?/gm, "") // Strip HTML tags
+    .replace(/\s+/g, " ") // Normalize whitespace
+    .trim();
+}
+
+/**
+ * Deeply sanitize all strings in a recipe object
+ */
+function sanitizeRecipe(recipe: Recipe): Recipe {
+  const sanitized = JSON.parse(JSON.stringify(recipe));
+
+  const walk = (obj: any) => {
+    for (const key in obj) {
+      if (typeof obj[key] === "string") {
+        obj[key] = sanitizeString(obj[key]);
+      } else if (typeof obj[key] === "object" && obj[key] !== null) {
+        walk(obj[key]);
+      }
+    }
+  };
+
+  walk(sanitized);
+  return sanitized;
 }
 
 export async function saveRecipeToLongTermStorage(
@@ -31,12 +62,16 @@ export async function saveRecipeToLongTermStorage(
   if (!process.env.DATABASE_URL) return;
 
   try {
+    const sanitizedRecipe = sanitizeRecipe(recipe);
+    const rawUrl = explicitSourceUrl || recipe.sourceUrl;
+    const normalizedUrl = rawUrl ? normalizeUrl(rawUrl) : null;
+
     await db.insert(recipes).values({
-      title: recipe.title,
-      sourceUrl: explicitSourceUrl || recipe.sourceUrl || null,
+      title: sanitizedRecipe.title,
+      sourceUrl: normalizedUrl,
       sourcePlatform: recipe.sourcePlatform || "unknown",
       confidenceScore: recipe.confidenceScore || null,
-      data: recipe,
+      data: sanitizedRecipe,
       // User Metadata
       ipAddress: userMetadata?.ipAddress || null,
       userAgent: userMetadata?.userAgent || null,
