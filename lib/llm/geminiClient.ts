@@ -30,23 +30,26 @@ export function getGeminiClient(): GoogleGenerativeAI {
 }
 
 // JSON Schema for Recipe extraction
+// Note: We require noRecipeFound + either title/ingredients/instructions OR noRecipeReason
+// Since Gemini doesn't support conditional requirements well, we make the key fields required
+// and handle missing fields gracefully in the parser
 const recipeSchema: ResponseSchema = {
-  description: "Recipe extraction schema",
+  description: "Recipe extraction schema - either a full recipe or a noRecipeFound response",
   type: SchemaType.OBJECT,
   properties: {
     noRecipeFound: {
       type: SchemaType.BOOLEAN,
       description:
-        "Set to true if the content does not contain a recipe. When true, only noRecipeReason should be provided.",
+        "REQUIRED: Set to true if the content does not contain a complete recipe with ingredients AND cooking instructions. Set to false if a recipe is present. When true, you MUST provide noRecipeReason and MUST NOT provide recipe fields.",
     },
     noRecipeReason: {
       type: SchemaType.STRING,
       description:
-        "When noRecipeFound is true, explain why no recipe was found (e.g., 'Content is a product review', 'Page contains only nutritional information').",
+        "REQUIRED when noRecipeFound is true. Explain why no recipe was found (e.g., 'Content is just a food photo caption without recipe details', 'Page contains only nutritional information', 'Post mentions food but provides no cooking instructions'). Keep it concise (1 sentence).",
     },
     title: {
       type: SchemaType.STRING,
-      description: "The name of the recipe",
+      description: "REQUIRED when noRecipeFound is false. The name of the recipe.",
     },
     description: {
       type: SchemaType.STRING,
@@ -71,6 +74,7 @@ const recipeSchema: ResponseSchema = {
     },
     ingredients: {
       type: SchemaType.ARRAY,
+      description: "REQUIRED when noRecipeFound is false. List of recipe ingredients.",
       items: {
         type: SchemaType.OBJECT,
         properties: {
@@ -83,6 +87,7 @@ const recipeSchema: ResponseSchema = {
     },
     instructions: {
       type: SchemaType.ARRAY,
+      description: "REQUIRED when noRecipeFound is false. Step-by-step cooking instructions.",
       items: {
         type: SchemaType.OBJECT,
         properties: {

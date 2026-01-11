@@ -32,7 +32,30 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
     }
 
     // Validate it looks like a recipe
+    // If noRecipeFound is false or missing, we expect recipe fields
     if (!parsed.title || !parsed.ingredients || !parsed.instructions) {
+      // Log the actual parsed content for debugging
+      console.error("[ResponseParser] Missing required fields:", {
+        hasTitle: !!parsed.title,
+        hasIngredients: !!parsed.ingredients,
+        hasInstructions: !!parsed.instructions,
+        noRecipeFound: parsed.noRecipeFound,
+        actualKeys: Object.keys(parsed),
+        rawResponse: response.substring(0, 200),
+      });
+
+      // Safety net: If noRecipeFound is explicitly false but we're missing fields,
+      // treat it as if the LLM should have set noRecipeFound to true
+      if (parsed.noRecipeFound === false) {
+        return {
+          success: false,
+          noRecipeFound: true,
+          noRecipeReason:
+            parsed.noRecipeReason ||
+            "LLM indicated content should have a recipe but failed to extract required fields (title, ingredients, or instructions)",
+        };
+      }
+
       return {
         success: false,
         error: "Response does not contain required recipe fields",

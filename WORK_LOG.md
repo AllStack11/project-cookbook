@@ -28,6 +28,11 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Feature: Funny cooking-related retry messages for LLM errors
+  - **Type**: Feature / UX
+  - **Description**: Added a randomized selection of funny cooking-related puns and messages that appear when recipe extraction fails due to an LLM error (Internal Error, Extraction Failed, or Validation/Parsing Failed).
+  - **Impact**: Softens the blow of technical failures with humor and encourages users to retry, improving the overall user experience during occasional AI processing hiccups.
+
 - **2026-01-10**: Feature: 400ms delay before scrolling on extraction
   - **Type**: Feature / UX
   - **Description**: Added a 400ms delay before the page scrolls down to the loading state after the user clicks the "Extract" button.
