@@ -39,13 +39,13 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
 
   return (
     <div className="w-full max-w-3xl mx-auto">
-      <div className="card-modern !p-3">
+      <div className="card-modern !p-2 md:!p-3">
         <div className="mb-0">
-          <div className="flex p-1.5 bg-stone-100/80 rounded-2xl mb-6">
+          <div className="flex p-1 md:p-1.5 bg-stone-100/80 rounded-2xl mb-4 md:mb-6">
             <button
               type="button"
               onClick={() => setInputType("url")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 md:py-2.5 px-3 md:px-4 rounded-xl text-xs md:text-sm font-bold transition-all ${
                 inputType === "url"
                   ? "bg-white text-stone-900 shadow-sm"
                   : "text-stone-500 hover:text-stone-700"
@@ -69,7 +69,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
             <button
               type="button"
               onClick={() => setInputType("text")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 md:py-2.5 px-3 md:px-4 rounded-xl text-xs md:text-sm font-bold transition-all ${
                 inputType === "text"
                   ? "bg-white text-stone-900 shadow-sm"
                   : "text-stone-500 hover:text-stone-700"
@@ -92,9 +92,12 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-5 pb-5 pt-2">
+          <form
+            onSubmit={handleSubmit}
+            className="px-3 md:px-5 pb-3 md:pb-5 pt-1 md:pt-2"
+          >
             {inputType === "url" ? (
-              <div className="mb-6">
+              <div className="mb-4 md:mb-6">
                 <div className="relative group">
                   <input
                     type="url"
@@ -102,7 +105,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="Paste a YouTube link or blog URL..."
-                    className="w-full px-5 py-4 bg-stone-50 border-2 border-stone-100 rounded-2xl focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 outline-none transition-all text-stone-900 placeholder:text-stone-400 font-medium"
+                    className="w-full px-4 md:px-5 py-3.5 md:py-4 bg-stone-50 border-2 border-stone-100 rounded-2xl focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 outline-none transition-all text-sm md:text-base text-stone-900 placeholder:text-stone-400 font-medium"
                     disabled={isLoading}
                   />
                   <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity">
@@ -123,14 +126,14 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                 </div>
               </div>
             ) : (
-              <div className="mb-6">
+              <div className="mb-4 md:mb-6">
                 <textarea
                   id="text"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Paste recipe content here..."
                   rows={6}
-                  className="w-full px-5 py-4 bg-stone-50 border-2 border-stone-100 rounded-2xl focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 outline-none transition-all text-stone-900 placeholder:text-stone-400 font-medium resize-none"
+                  className="w-full px-4 md:px-5 py-3.5 md:py-4 bg-stone-50 border-2 border-stone-100 rounded-2xl focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 outline-none transition-all text-sm md:text-base text-stone-900 placeholder:text-stone-400 font-medium resize-none"
                   disabled={isLoading}
                 />
               </div>

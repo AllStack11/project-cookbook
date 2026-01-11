@@ -37,7 +37,7 @@ export default function RootLayout({
         )}
         <div className="min-h-screen flex flex-col">
           <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-stone-100 print:hidden">
-            <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between">
+            <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 sm:px-6 lg:px-8 flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-black tracking-tight text-stone-900 flex items-center gap-2">
                   <span className="bg-primary-500 text-white p-1.5 rounded-lg">
@@ -61,10 +61,12 @@ export default function RootLayout({
             </div>
           </header>
 
-          <main className="flex-1 py-12 px-4 sm:px-6 lg:px-8">{children}</main>
+          <main className="flex-1 py-8 md:py-12 px-4 sm:px-6 lg:px-8">
+            {children}
+          </main>
 
           <footer className="bg-white border-t border-stone-100 print:hidden">
-            <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 sm:px-6 lg:px-8">
               <p className="text-center text-sm text-stone-500 font-medium">
                 &copy; {new Date().getFullYear()} Just The Recipe. Crafted for
                 home chefs.

@@ -182,9 +182,9 @@ export default function LoadingState() {
   }, []);
 
   return (
-    <div className="w-full max-w-4xl mx-auto card-modern !p-12 relative overflow-hidden min-h-[500px]">
+    <div className="w-full max-w-4xl mx-auto card-modern !p-6 md:!p-12 relative overflow-hidden min-h-[550px] md:min-h-[500px]">
       {/* Skeleton loader in background - reduced opacity */}
-      <div className="animate-pulse opacity-[0.03] select-none pointer-events-none">
+      <div className="animate-pulse opacity-[0.03] select-none pointer-events-none hidden md:block">
         <div className="h-10 bg-stone-900 rounded-xl w-3/4 mb-6"></div>
         <div className="h-5 bg-stone-900 rounded-lg w-1/2 mb-12"></div>
 
@@ -205,8 +205,8 @@ export default function LoadingState() {
       </div>
 
       {/* Overlay content - in a card centered on top of skeleton */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 z-10">
-        <div className="bg-white rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] border border-stone-100 p-12 max-w-2xl w-full text-center relative overflow-hidden">
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 z-10">
+        <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] border border-stone-100 p-6 md:p-12 max-w-2xl w-full text-center relative overflow-hidden">
           {/* Subtle progress bar at the very top of the card */}
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-stone-50">
             <div
@@ -215,7 +215,7 @@ export default function LoadingState() {
             ></div>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-6 md:space-y-8">
             {/* Loading indicator */}
             <div className="space-y-4">
               <div className="flex items-center justify-center space-x-3">
@@ -232,10 +232,10 @@ export default function LoadingState() {
                   style={{ animationDelay: "300ms" }}
                 ></div>
               </div>
-              <h3 className="text-2xl font-black text-stone-900 tracking-tight">
+              <h3 className="text-xl md:text-2xl font-black text-stone-900 tracking-tight leading-tight">
                 Simmering your recipe...
               </h3>
-              <p className="text-stone-500 font-medium max-w-sm mx-auto leading-relaxed">
+              <p className="text-sm md:text-base text-stone-500 font-medium max-w-sm mx-auto leading-relaxed">
                 Our AI is carefully reading every detail to ensure 100%
                 accuracy.
               </p>
@@ -271,13 +271,13 @@ export default function LoadingState() {
             </div>
 
             {/* Cooking Facts Section */}
-            <div className="p-8 bg-stone-50 rounded-[2rem] border border-stone-100 relative group">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 py-1 rounded-full border border-stone-100 shadow-sm text-[10px] font-black text-primary-600 tracking-[0.2em] uppercase">
+            <div className="p-5 md:p-8 bg-stone-50 rounded-[1.5rem] md:rounded-[2rem] border border-stone-100 relative group">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 py-1 rounded-full border border-stone-100 shadow-sm text-[10px] font-black text-primary-600 tracking-[0.2em] uppercase whitespace-nowrap">
                 Chef's Fact
               </div>
               <p
                 key={factIndex}
-                className="text-lg text-stone-800 leading-relaxed animate-fade-in font-bold italic"
+                className="text-base md:text-lg text-stone-800 leading-relaxed animate-fade-in font-bold italic"
               >
                 "{COOKING_FACTS[factIndex]}"
               </p>

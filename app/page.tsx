@@ -88,9 +88,9 @@ export default function Home() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-16 print:hidden">
-        <h2 className="text-5xl md:text-6xl font-black text-stone-900 mb-6 tracking-tight leading-[1.1]">
-          Turn any video into a <br />
+      <div className="text-center mb-10 md:mb-16 print:hidden">
+        <h2 className="text-4xl md:text-6xl font-black text-stone-900 mb-4 md:mb-6 tracking-tight leading-[1.1]">
+          Turn any video into a <br className="hidden md:block" />
           <span className="text-primary-600">perfect recipe.</span>
         </h2>
         <p className="text-lg text-stone-500 max-w-2xl mx-auto leading-relaxed">
@@ -99,12 +99,12 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="mb-20 print:hidden">
+      <div className="mb-12 md:mb-20 print:hidden">
         <InputForm onSubmit={handleSubmit} isLoading={isLoading} />
       </div>
 
       {!isLoading && !recipe && !error && (
-        <div className="mb-12 print:hidden">
+        <div className="mb-8 md:mb-12 print:hidden">
           <AdBanner slot="hero-bottom" />
         </div>
       )}
@@ -129,10 +129,10 @@ export default function Home() {
       {recipe && <RecipeCard recipe={recipe} />}
 
       {!isLoading && !error && !recipe && (
-        <div className="mt-24 print:hidden">
+        <div className="mt-16 md:mt-24 print:hidden">
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-12">
-              <h3 className="text-2xl font-bold text-stone-900">
+            <div className="flex items-center justify-between mb-8 md:mb-12">
+              <h3 className="text-xl md:text-2xl font-bold text-stone-900">
                 Supported Sources
               </h3>
               <div className="h-px flex-1 bg-stone-100 ml-8"></div>

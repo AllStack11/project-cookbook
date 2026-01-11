@@ -28,6 +28,24 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-11**: Optimization: Mobile-first UI refinements
+  - **Type**: Optimization / UI
+  - **Description**: Optimized the entire application for mobile devices while preserving the exact desktop experience.
+    - **Header & Footer**: Reduced vertical padding on mobile for better space utilization.
+    - **Landing Page**: Adjusted hero heading sizes (`text-4xl` on mobile vs `text-6xl` on desktop) and refined spacing between sections.
+    - **Input Form**: Optimized padding and button sizes for touch targets; reduced font sizes for placeholders to fit smaller screens.
+    - **Recipe Card**:
+      - Redesigned the header to be more compact on mobile with adjusted font sizes and padding.
+    - **Loading State**:
+      - Fixed an issue where "Chef's Facts" overflowed the container on mobile devices.
+      - Optimized the internal card padding and font sizes for smaller screens.
+      - Hidden the background skeleton loader on mobile to prioritize the facts overlay.
+      - Refined the statistics grid (servings, prep/cook time) to better handle narrow widths.
+      - Optimized action buttons ("Print", "Copy") to be full-width on small screens for easier interaction.
+      - Adjusted the layout of ingredients and instructions for improved readability on mobile devices.
+      - Fine-tuned nutrition and notes sections with mobile-specific spacing.
+  - **Impact**: Significant improvement in user experience for mobile visitors (who likely make up a large portion of home chefs) without affecting the desktop design.
+
 - **2026-01-11**: Fix: Resolved unused variables and outdated test imports
   - **Type**: Bug Fix
   - **Description**:

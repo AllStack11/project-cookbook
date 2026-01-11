@@ -95,14 +95,14 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           </svg>
         </div>
 
-        <div className="relative z-10 p-8 md:p-12">
+        <div className="relative z-10 p-6 md:p-12">
           <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-            <div className="flex-1">
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-4">
+            <div className="flex-1 w-full">
+              <h1 className="text-2xl md:text-4xl font-black tracking-tight mb-3 md:mb-4">
                 {recipe.title}
               </h1>
               {recipe.description && (
-                <p className="text-stone-400 text-lg leading-relaxed max-w-2xl font-medium mb-4">
+                <p className="text-stone-400 text-base md:text-lg leading-relaxed max-w-2xl font-medium mb-4">
                   {recipe.description}
                 </p>
               )}
@@ -113,10 +113,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 />
               )}
             </div>
-            <div className="flex flex-wrap gap-3 print:hidden">
+            <div className="flex flex-row md:flex-wrap gap-3 w-full md:w-auto print:hidden">
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white text-sm font-bold transition-all border border-white/10"
+                className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 md:px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white text-xs md:text-sm font-bold transition-all border border-white/10"
               >
                 <svg
                   className="w-4 h-4"
@@ -135,7 +135,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
               </button>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 hover:bg-primary-600 rounded-xl text-white text-sm font-bold transition-all shadow-lg shadow-primary-500/20"
+                className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 md:px-5 py-2.5 bg-primary-500 hover:bg-primary-600 rounded-xl text-white text-xs md:text-sm font-bold transition-all shadow-lg shadow-primary-500/20"
               >
                 <svg
                   className="w-4 h-4"
@@ -155,28 +155,28 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-10 pt-10 border-t border-white/10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 md:gap-6 mt-8 md:mt-10 pt-8 md:pt-10 border-t border-white/10">
             {recipe.servings && (
-              <div>
-                <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+              <div className="col-span-2 md:col-span-1 border-b border-white/5 pb-6 md:pb-0 md:border-b-0">
+                <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 md:mb-1">
                   Servings
                 </div>
-                <div className="flex items-center gap-3 print:gap-0">
+                <div className="flex items-center justify-center md:justify-start gap-4 md:gap-3 print:gap-0">
                   <button
                     onClick={() => adjustServings(-1)}
                     disabled={currentServings <= 1}
-                    className="print:hidden w-8 h-8 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center text-white font-bold transition-all border border-white/10"
+                    className="print:hidden w-10 h-10 md:w-8 md:h-8 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center text-white font-bold transition-all border border-white/10"
                     aria-label="Decrease servings"
                   >
                     −
                   </button>
-                  <div className="text-xl font-bold min-w-[60px] text-center">
+                  <div className="text-xl font-bold min-w-[80px] md:min-w-[60px] text-center">
                     {currentServings}{" "}
                     {currentServings === 1 ? "Person" : "People"}
                   </div>
                   <button
                     onClick={() => adjustServings(1)}
-                    className="print:hidden w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white font-bold transition-all border border-white/10"
+                    className="print:hidden w-10 h-10 md:w-8 md:h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white font-bold transition-all border border-white/10"
                     aria-label="Increase servings"
                   >
                     +
@@ -218,8 +218,8 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         </div>
       </div>
 
-      <div className="p-8 md:p-12 relative">
-        <div className="absolute top-8 right-8 flex bg-stone-100 rounded-xl p-1 border border-stone-200 print:hidden z-20">
+      <div className="p-6 md:p-12 relative">
+        <div className="absolute top-6 md:top-8 right-6 md:right-8 flex bg-stone-100 rounded-xl p-1 border border-stone-200 print:hidden z-20">
           <button
             onClick={() => setViewMode("columns")}
             title="Columns View"
@@ -269,10 +269,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         </div>
 
         {viewMode === "columns" ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-16">
             {/* Ingredients Column */}
             <div className="lg:col-span-5">
-              <h2 className="text-2xl font-black text-stone-900 mb-8 flex items-center gap-3">
+              <h2 className="text-xl md:text-2xl font-black text-stone-900 mb-6 md:mb-8 flex items-center gap-3">
                 <span className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center text-sm">
                   🛒
                 </span>
@@ -308,22 +308,25 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
             {/* Instructions Column */}
             <div className="lg:col-span-7">
-              <h2 className="text-2xl font-black text-stone-900 mb-8 flex items-center gap-3">
+              <h2 className="text-xl md:text-2xl font-black text-stone-900 mb-6 md:mb-8 flex items-center gap-3">
                 <span className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center text-sm">
                   🍳
                 </span>
                 Instructions
               </h2>
-              <div className="space-y-10">
+              <div className="space-y-8 md:space-y-10">
                 {recipe.instructions.map((instruction) => (
-                  <div key={instruction.step} className="flex gap-6 group">
+                  <div
+                    key={instruction.step}
+                    className="flex gap-4 md:gap-6 group"
+                  >
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-stone-900 text-white rounded-2xl flex items-center justify-center font-black text-sm group-hover:bg-primary-500 transition-colors duration-300">
+                      <div className="w-8 h-8 md:w-10 md:h-10 bg-stone-900 text-white rounded-xl md:rounded-2xl flex items-center justify-center font-black text-xs md:text-sm group-hover:bg-primary-500 transition-colors duration-300">
                         {instruction.step}
                       </div>
                     </div>
-                    <div className="pt-2">
-                      <p className="text-stone-700 leading-relaxed font-medium text-lg">
+                    <div className="pt-1 md:pt-2">
+                      <p className="text-stone-700 leading-relaxed font-medium text-base md:text-lg">
                         {instruction.text}
                       </p>
                     </div>
@@ -381,7 +384,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
         {/* Notes Section */}
         {recipe.notes && recipe.notes.length > 0 && (
-          <div className="mt-16 p-8 bg-stone-50 rounded-[2rem] border border-stone-100">
+          <div className="mt-12 md:mt-16 p-6 md:p-8 bg-stone-50 rounded-[1.5rem] md:rounded-[2rem] border border-stone-100">
             <h3 className="text-lg font-black text-stone-900 mb-4 uppercase tracking-wider">
               Chef's Notes
             </h3>
@@ -403,13 +406,13 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
         {/* Nutrition Section */}
         {recipe.nutrition && (
-          <div className="mt-16 pt-12 border-t border-stone-100">
-            <h3 className="text-xl font-black text-stone-900 mb-8">
+          <div className="mt-12 md:mt-16 pt-8 md:pt-12 border-t border-stone-100">
+            <h3 className="text-lg md:text-xl font-black text-stone-900 mb-6 md:mb-8">
               Nutrition Facts
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               {recipe.nutrition.calories && (
-                <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
+                <div className="p-4 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
                   <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🔥
                   </div>
@@ -422,33 +425,33 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 </div>
               )}
               {recipe.nutrition.protein && (
-                <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
+                <div className="p-4 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
                   <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-40 transition-opacity">
                     💪
                   </div>
                   <div className="text-stone-400 text-[10px] font-black uppercase tracking-widest mb-1">
                     Protein
                   </div>
-                  <div className="text-2xl font-black text-stone-800">
+                  <div className="text-xl md:text-2xl font-black text-stone-800">
                     {recipe.nutrition.protein}
                   </div>
                 </div>
               )}
               {recipe.nutrition.carbs && (
-                <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
+                <div className="p-4 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
                   <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🍞
                   </div>
                   <div className="text-stone-400 text-[10px] font-black uppercase tracking-widest mb-1">
                     Carbs
                   </div>
-                  <div className="text-2xl font-black text-stone-800">
+                  <div className="text-xl md:text-2xl font-black text-stone-800">
                     {recipe.nutrition.carbs}
                   </div>
                 </div>
               )}
               {recipe.nutrition.fat && (
-                <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
+                <div className="p-4 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
                   <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🥑
                   </div>

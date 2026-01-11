@@ -28,24 +28,61 @@ async function getBrowser() {
   } else {
     logger.info("Using local environment browser configuration");
 
-    // Local development - use common macOS paths
-    const macPaths = [
-      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-      "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-    ];
-
     const fs = await import("fs");
+    const path = await import("path");
+    const os = await import("os");
     const puppeteer = await import("puppeteer-core");
 
-    for (const path of macPaths) {
-      if (fs.existsSync(path)) {
-        logger.info(`Found browser at ${path}`);
+    // Determine platform-specific browser paths
+    const platform = os.platform();
+    let browserPaths: string[] = [];
+
+    if (platform === "win32") {
+      // Windows paths
+      const programFiles = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
+      const programFiles64 = process.env["ProgramFiles"] || "C:\\Program Files";
+      const localAppData = process.env["LOCALAPPDATA"] || path.join(os.homedir(), "AppData", "Local");
+
+      browserPaths = [
+        // Edge (most common on Windows)
+        path.join(programFiles64, "Microsoft\\Edge\\Application\\msedge.exe"),
+        path.join(programFiles, "Microsoft\\Edge\\Application\\msedge.exe"),
+        // Chrome
+        path.join(programFiles64, "Google\\Chrome\\Application\\chrome.exe"),
+        path.join(programFiles, "Google\\Chrome\\Application\\chrome.exe"),
+        path.join(localAppData, "Google\\Chrome\\Application\\chrome.exe"),
+        // Brave
+        path.join(programFiles64, "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+        path.join(programFiles, "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+        path.join(localAppData, "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+      ];
+    } else if (platform === "darwin") {
+      // macOS paths
+      browserPaths = [
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+      ];
+    } else {
+      // Linux paths
+      browserPaths = [
+        "/usr/bin/microsoft-edge",
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/brave-browser",
+      ];
+    }
+
+    for (const browserPath of browserPaths) {
+      if (fs.existsSync(browserPath)) {
+        logger.info(`Found browser at ${browserPath}`);
         return await puppeteer.default.launch({
           args: ["--no-sandbox", "--disable-setuid-sandbox"],
-          executablePath: path,
+          executablePath: browserPath,
           headless: true,
-          userDataDir: `/tmp/puppeteer_local_profile_${Date.now()}`,
+          userDataDir: platform === "win32"
+            ? path.join(os.tmpdir(), `puppeteer_local_profile_${Date.now()}`)
+            : `/tmp/puppeteer_local_profile_${Date.now()}`,
         });
       }
     }
