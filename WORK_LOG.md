@@ -28,6 +28,13 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-11**: Fix: Resolved unused variables and outdated test imports
+  - **Type**: Bug Fix
+  - **Description**:
+    - Fixed unused variable errors in `examples/logging-examples.ts` by underscore-prefixing parameters in mock functions.
+    - Updated `__tests__/extractors/youtubeExtractor.test.ts` to remove the deprecated `youtubei.js` import and replace it with `youtube-transcript` mocks, aligning the tests with the current implementation in `lib/extractors/youtubeExtractor.ts`.
+  - **Impact**: Eliminates build-time TypeScript errors and ensures test suite consistency with the updated tech stack.
+
 - **2026-01-10**: Feature: Funny cooking-related retry messages for LLM errors
   - **Type**: Feature / UX
   - **Description**: Added a randomized selection of funny cooking-related puns and messages that appear when recipe extraction fails due to an LLM error (Internal Error, Extraction Failed, or Validation/Parsing Failed).

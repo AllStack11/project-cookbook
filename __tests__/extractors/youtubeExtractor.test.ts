@@ -2,11 +2,12 @@ import {
   extractYoutubeTranscript,
   extractYoutubeDescription,
 } from "@/lib/extractors/youtubeExtractor";
+import { YoutubeTranscript } from "youtube-transcript";
 
-// Mock youtubei.js
-jest.mock("youtubei.js", () => ({
-  Innertube: {
-    create: jest.fn(),
+// Mock youtube-transcript
+jest.mock("youtube-transcript", () => ({
+  YoutubeTranscript: {
+    fetchTranscript: jest.fn(),
   },
 }));
 
@@ -21,42 +22,29 @@ jest.mock("@/lib/utils/logger", () => ({
   })),
 }));
 
-import { Innertube } from "youtubei.js";
-
-const mockCreate = Innertube.create as jest.MockedFunction<
-  typeof Innertube.create
->;
+const mockFetchTranscript =
+  YoutubeTranscript.fetchTranscript as jest.MockedFunction<
+    typeof YoutubeTranscript.fetchTranscript
+  >;
 
 describe("youtubeExtractor", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset any module state
-    jest.resetModules();
   });
 
   describe("extractYoutubeTranscript", () => {
-    it("should extract transcript successfully via youtubei.js", async () => {
-      const mockTranscript = {
-        transcript: {
-          content: {
-            body: {
-              initial_segments: [
-                { snippet: { text: "Welcome to my recipe video" } },
-                { snippet: { text: "Today we make delicious cookies" } },
-                { snippet: { text: "You will need flour, sugar, and butter" } },
-              ],
-            },
-          },
+    it("should extract transcript successfully via youtube-transcript", async () => {
+      const mockTranscript = [
+        { text: "Welcome to my recipe video", duration: 1, offset: 0 },
+        { text: "Today we make delicious cookies", duration: 1, offset: 1 },
+        {
+          text: "You will need flour, sugar, and butter",
+          duration: 1,
+          offset: 2,
         },
-      };
+      ];
 
-      const mockGetInfo = jest.fn().mockResolvedValue({
-        getTranscript: jest.fn().mockResolvedValue(mockTranscript),
-      });
-
-      mockCreate.mockResolvedValue({
-        getInfo: mockGetInfo,
-      } as any);
+      mockFetchTranscript.mockResolvedValue(mockTranscript);
 
       const result = await extractYoutubeTranscript("test-video-id");
 
@@ -81,86 +69,25 @@ describe("youtubeExtractor", () => {
       expect(result.error).toBe("Video ID is required");
     });
 
-    it("should handle no transcript segments available", async () => {
-      const mockTranscript = {
-        transcript: {
-          content: {
-            body: {
-              initial_segments: null,
-            },
-          },
-        },
-      };
+    it("should handle no transcript found via library", async () => {
+      mockFetchTranscript.mockResolvedValue([]);
 
-      const mockGetInfo = jest.fn().mockResolvedValue({
-        getTranscript: jest.fn().mockResolvedValue(mockTranscript),
+      // Also need to mock fetch for timedtext fallback to avoid real network calls
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
       });
 
-      mockCreate.mockResolvedValue({
-        getInfo: mockGetInfo,
-      } as any);
-
       const result = await extractYoutubeTranscript("test-video-id");
 
-      // Should fail at youtubei.js and potentially fall back to API
-      // But without YOUTUBE_API_KEY, should ultimately fail
       expect(result.success).toBe(false);
     });
 
-    it("should handle empty transcript segments", async () => {
-      const mockTranscript = {
-        transcript: {
-          content: {
-            body: {
-              initial_segments: [],
-            },
-          },
-        },
-      };
+    it("should handle youtube-transcript errors gracefully", async () => {
+      mockFetchTranscript.mockRejectedValue(new Error("Network error"));
 
-      const mockGetInfo = jest.fn().mockResolvedValue({
-        getTranscript: jest.fn().mockResolvedValue(mockTranscript),
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
       });
-
-      mockCreate.mockResolvedValue({
-        getInfo: mockGetInfo,
-      } as any);
-
-      const result = await extractYoutubeTranscript("test-video-id");
-
-      expect(result.success).toBe(false);
-    });
-
-    it("should handle youtubei.js errors gracefully", async () => {
-      mockCreate.mockRejectedValue(new Error("Network error"));
-
-      const result = await extractYoutubeTranscript("test-video-id");
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it("should handle getInfo errors", async () => {
-      const mockGetInfo = jest.fn().mockRejectedValue(new Error("Video not found"));
-
-      mockCreate.mockResolvedValue({
-        getInfo: mockGetInfo,
-      } as any);
-
-      const result = await extractYoutubeTranscript("test-video-id");
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("InnerTube");
-    });
-
-    it("should handle getTranscript errors", async () => {
-      const mockGetInfo = jest.fn().mockResolvedValue({
-        getTranscript: jest.fn().mockRejectedValue(new Error("Transcript unavailable")),
-      });
-
-      mockCreate.mockResolvedValue({
-        getInfo: mockGetInfo,
-      } as any);
 
       const result = await extractYoutubeTranscript("test-video-id");
 
@@ -169,7 +96,6 @@ describe("youtubeExtractor", () => {
   });
 
   describe("extractYoutubeDescription", () => {
-    // Mock global fetch for description extraction tests
     const originalFetch = global.fetch;
 
     beforeEach(() => {
