@@ -29,10 +29,17 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoading && loadingRef.current) {
-      loadingRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+      // Add a 400ms delay to allow the button animation to complete
+      const timeoutId = setTimeout(() => {
+        if (loadingRef.current) {
+          loadingRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }, 400);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [isLoading]);
 

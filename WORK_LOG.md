@@ -28,6 +28,11 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-10**: Feature: 400ms delay before scrolling on extraction
+  - **Type**: Feature / UX
+  - **Description**: Added a 400ms delay before the page scrolls down to the loading state after the user clicks the "Extract" button.
+  - **Impact**: Allows the "Extract" button's click animation to complete before the viewport moves, providing a smoother and more polished tactile experience.
+
 - **2026-01-10**: Improved Cache Normalization Logic
   - **Type**: Optimization
   - **Description**: Refactored `normalizeUrl` in `cacheClient.ts` to be more aggressive with query parameter stripping. Added platform-specific normalization for YouTube (unifying short and long links), Instagram, and TikTok. Implemented a whitelist approach for generic blog parameters.
