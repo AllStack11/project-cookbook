@@ -261,6 +261,7 @@ export async function POST(request: NextRequest) {
             // Calculate confidence score and set source platform
             recipe.confidenceScore = calculateConfidenceScore(recipe);
             recipe.sourcePlatform = sourceType;
+            recipe.sourceUrl = url;
 
             await setCachedRecipe(url, recipe);
             await saveRecipeToLongTermStorage(
@@ -517,6 +518,11 @@ export async function POST(request: NextRequest) {
       score: recipe.confidenceScore,
       sourcePlatform: sourceType,
     });
+
+    // Ensure sourceUrl is always attached to the recipe object
+    if (sourceUrl) {
+      recipe.sourceUrl = sourceUrl;
+    }
 
     // Cache the result if from URL
     if (sourceUrl) {

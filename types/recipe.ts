@@ -26,7 +26,7 @@ export interface Recipe {
   ingredients: Ingredient[];
   instructions: Instruction[];
   notes?: string[];
-  sourceUrl?: string;
+  sourceUrl?: string; // Populated by code, not LLM extraction
   imageUrl?: string;
   nutrition?: Nutrition;
   // Quality & Source metadata

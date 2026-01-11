@@ -96,10 +96,6 @@ const recipeSchema: ResponseSchema = {
       type: SchemaType.ARRAY,
       items: { type: SchemaType.STRING },
     },
-    imageUrl: {
-      type: SchemaType.STRING,
-      description: "URL of a featured image for the recipe",
-    },
     nutrition: {
       type: SchemaType.OBJECT,
       properties: {
