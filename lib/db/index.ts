@@ -15,6 +15,7 @@ export const db = drizzle(sql, { schema });
 import { Recipe } from "@/types/recipe";
 import { recipes } from "./schema";
 import { normalizeUrl } from "@/lib/cache/cacheClient";
+import { createLogger } from "@/lib/utils/logger";
 
 export interface UserMetadata {
   ipAddress?: string;
@@ -59,12 +60,29 @@ export async function saveRecipeToLongTermStorage(
   userMetadata?: UserMetadata,
   explicitSourceUrl?: string
 ) {
-  if (!process.env.DATABASE_URL) return;
+  const logger = createLogger("DB:SaveRecipe");
+
+  if (!process.env.DATABASE_URL) {
+    logger.warn("DATABASE_URL not set, skipping recipe save");
+    return;
+  }
+
+  const startTime = Date.now();
 
   try {
     const sanitizedRecipe = sanitizeRecipe(recipe);
     const rawUrl = explicitSourceUrl || recipe.sourceUrl;
     const normalizedUrl = rawUrl ? normalizeUrl(rawUrl) : null;
+
+    logger.info("Saving recipe to database", {
+      recipeTitle: sanitizedRecipe.title,
+      sourceUrl: normalizedUrl,
+      sourcePlatform: recipe.sourcePlatform || "unknown",
+      confidenceScore: recipe.confidenceScore,
+      hasUserMetadata: !!userMetadata,
+      userCountry: userMetadata?.country,
+      isSuspicious: userMetadata?.isSuspicious,
+    });
 
     await db.insert(recipes).values({
       title: sanitizedRecipe.title,
@@ -79,7 +97,31 @@ export async function saveRecipeToLongTermStorage(
       region: userMetadata?.region || null,
       isSuspicious: userMetadata?.isSuspicious || false,
     });
+
+    const duration = Date.now() - startTime;
+
+    logger.info("Recipe saved successfully", {
+      recipeTitle: sanitizedRecipe.title,
+      duration,
+      sourceUrl: normalizedUrl,
+    });
+
+    // Log as a metric for monitoring
+    logger.metric("recipe_saved", 1, {
+      sourcePlatform: recipe.sourcePlatform || "unknown",
+      duration,
+      country: userMetadata?.country,
+      isSuspicious: userMetadata?.isSuspicious,
+    });
   } catch (error) {
-    console.error("Failed to save recipe to long-term storage:", error);
+    const duration = Date.now() - startTime;
+
+    logger.error("Failed to save recipe to long-term storage", {
+      error: error instanceof Error ? error.message : String(error),
+      recipeTitle: recipe.title,
+      sourceUrl: explicitSourceUrl || recipe.sourceUrl,
+      duration,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
   }
 }
