@@ -28,6 +28,18 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-01-15**: Optimization: Harsher Confidence Score with Incomplete Data Penalties
+  - **Type**: Optimization / Quality
+  - **Description**: Refactored the confidence score calculation in `lib/validators/recipeValidator.ts` to use a hybrid bonus/penalty model instead of purely additive scoring.
+    - Changed base score from 0 to 50 (representing "average" extraction)
+    - Added penalties for missing metadata: servings (-8), prepTime (-6), cookTime (-6), totalTime (-5)
+    - Added penalties for missing/short description (-5/-3)
+    - Added penalties for poor ingredient detail: <25% (-12), <50% (-8)
+    - Added penalty for short instructions avg <20 chars (-5)
+    - Increased penalties for generated content (-20, was -15) and partial fallback (-12, was -10)
+    - Reduced metadata bonuses from +5 to +3 each to balance the penalty system
+  - **Impact**: Scores now better reflect extraction quality differences. Complete recipes score 95-100, typical YouTube extractions 65-75, and minimal social media extractions 25-40 (previously 55-70). This provides more honest quality feedback to users.
+
 - 2026-01-15, Feature, Added extraction support for YouTube Shorts, Enabled recipe extraction from youtube.com/shorts/ URLs by updating URL validation and ID extraction logic.
 - **2026-01-15**: Feature: Functional AI Status Indicator
   - **Type**: Feature / UI

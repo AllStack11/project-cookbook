@@ -255,78 +255,128 @@ export function isValidRecipe(recipe: Recipe): boolean {
 
 /**
  * Calculate a confidence score (0-100) for recipe extraction quality
- * Higher scores indicate more complete and detailed recipes
+ * Uses a hybrid bonus/penalty model:
+ * - Base score of 50 (average extraction)
+ * - Bonuses for quality indicators
+ * - Penalties for missing/incomplete data
  */
 export function calculateConfidenceScore(recipe: Recipe): number {
-  let score = 0;
+  // Start with base score representing "average" extraction
+  let score = 50;
 
-  // Title (10 points)
+  // === BONUSES (for good quality) ===
+
+  // Title (+10 for having one)
   if (recipe.title && recipe.title.trim().length > 0) {
     score += 10;
   }
 
-  // Description (5 points)
-  if (recipe.description && recipe.description.trim().length > 20) {
-    score += 5;
+  // Description bonus (tiered based on quality)
+  if (recipe.description && recipe.description.trim().length > 50) {
+    score += 5; // Good description
+  } else if (recipe.description && recipe.description.trim().length > 20) {
+    score += 2; // Acceptable description
   }
 
-  // Ingredients quality (25 points)
+  // Ingredients quality bonuses
+  let detailRatio = 0;
   if (recipe.ingredients && recipe.ingredients.length >= 2) {
-    score += 10; // Base for having ingredients
+    score += 5; // Base for having valid ingredients
 
-    // Bonus for detailed ingredients with amounts and units
     const detailedIngredients = recipe.ingredients.filter(
       (ing) => ing.amount && ing.unit
     );
-    const detailRatio = detailedIngredients.length / recipe.ingredients.length;
-    score += Math.round(15 * detailRatio);
+    detailRatio = detailedIngredients.length / recipe.ingredients.length;
+
+    if (detailRatio >= 0.8) {
+      score += 10; // Excellent detail
+    } else if (detailRatio >= 0.5) {
+      score += 5; // Good detail
+    }
   }
 
-  // Instructions quality (25 points)
+  // Instructions quality bonuses
+  let avgInstructionLength = 0;
   if (recipe.instructions && recipe.instructions.length >= 2) {
-    score += 10; // Base for having instructions
+    score += 5; // Base for having valid instructions
 
-    // Bonus for detailed instructions (longer text = more detail)
-    const avgInstructionLength =
+    avgInstructionLength =
       recipe.instructions.reduce((sum, inst) => sum + inst.text.length, 0) /
       recipe.instructions.length;
 
     if (avgInstructionLength > 100) {
-      score += 15;
+      score += 10; // Very detailed instructions
     } else if (avgInstructionLength > 50) {
-      score += 10;
-    } else if (avgInstructionLength > 20) {
-      score += 5;
+      score += 5; // Good detail
     }
   }
 
-  // Metadata completeness (20 points)
-  if (recipe.servings && recipe.servings > 0) score += 5;
-  if (recipe.prepTime !== undefined && recipe.prepTime > 0) score += 5;
-  if (recipe.cookTime !== undefined && recipe.cookTime > 0) score += 5;
-  if (recipe.totalTime !== undefined && recipe.totalTime > 0) score += 5;
+  // Metadata bonuses (reduced from +5 to +3 each)
+  if (recipe.servings && recipe.servings > 0) score += 3;
+  if (recipe.prepTime !== undefined && recipe.prepTime > 0) score += 3;
+  if (recipe.cookTime !== undefined && recipe.cookTime > 0) score += 3;
+  if (recipe.totalTime !== undefined && recipe.totalTime > 0) score += 3;
 
-  // Nutrition data (10 points)
+  // Nutrition bonus
   if (recipe.nutrition) {
     let nutritionFields = 0;
     if (recipe.nutrition.calories) nutritionFields++;
     if (recipe.nutrition.protein) nutritionFields++;
     if (recipe.nutrition.carbs) nutritionFields++;
     if (recipe.nutrition.fat) nutritionFields++;
-    score += Math.round((nutritionFields / 4) * 10);
+    score += Math.round((nutritionFields / 4) * 8);
   }
 
-  // Notes/Tips (5 points)
+  // Notes bonus
   if (recipe.notes && recipe.notes.length > 0) {
-    score += 5;
+    score += 3;
   }
 
-  // Deductions for fallback/generated content
+  // === PENALTIES (for incomplete/poor quality) ===
+
+  // Missing metadata penalties
+  if (!recipe.servings || recipe.servings <= 0) {
+    score -= 8;
+  }
+  if (recipe.prepTime === undefined || recipe.prepTime < 0) {
+    score -= 6;
+  }
+  if (recipe.cookTime === undefined || recipe.cookTime < 0) {
+    score -= 6;
+  }
+  if (recipe.totalTime === undefined || recipe.totalTime < 0) {
+    score -= 5;
+  }
+
+  // Description penalty (missing is worse than short)
+  if (!recipe.description || recipe.description.trim().length === 0) {
+    score -= 5;
+  } else if (recipe.description.trim().length < 20) {
+    score -= 3;
+  }
+
+  // Ingredient detail penalty (only if we have ingredients)
+  if (recipe.ingredients && recipe.ingredients.length >= 2) {
+    if (detailRatio < 0.25) {
+      score -= 12; // Very poor ingredient detail
+    } else if (detailRatio < 0.5) {
+      score -= 8; // Poor ingredient detail
+    }
+  }
+
+  // Short instructions penalty (only if we have instructions)
+  if (recipe.instructions && recipe.instructions.length >= 2) {
+    if (avgInstructionLength < 20) {
+      score -= 5; // Very terse instructions
+    }
+  }
+
+  // Fallback/generated content penalties (increased severity)
   if (recipe.isGenerated) {
-    score = Math.max(0, score - 15);
+    score -= 20;
   }
   if (recipe.isPartialFallback) {
-    score = Math.max(0, score - 10);
+    score -= 12;
   }
 
   // Ensure score is within 0-100 range
