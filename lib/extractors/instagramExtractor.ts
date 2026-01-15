@@ -1,6 +1,7 @@
 import { WebScraperResult } from "./webScraper";
 import { preprocessContent } from "./preprocessor";
 import { createLogger } from "../utils/logger";
+import { retryWithBackoff } from "../utils/retry";
 
 const logger = createLogger("Extractor:Instagram");
 
@@ -21,6 +22,11 @@ async function getBrowser() {
         "--disable-dev-shm-usage",
         "--disable-software-rasterizer",
         "--single-process",
+        // Performance optimizations - block unnecessary resources
+        "--disable-images",
+        "--no-first-run",
+        "--disable-background-networking",
+        "--disable-hang-monitor",
       ],
       executablePath: await chromium.default.executablePath(),
       headless: true,
@@ -93,16 +99,36 @@ async function getBrowser() {
   }
 }
 
-export async function scrapeInstagramContent(
-  url: string
-): Promise<WebScraperResult> {
+/**
+ * Internal extraction function (without retry logic)
+ */
+async function performInstagramExtraction(url: string): Promise<WebScraperResult> {
   let browser;
+  const startTime = Date.now();
+  let browserLaunchTime = 0;
+  let pageLoadTime = 0;
+
   try {
     logger.info("Launching Puppeteer for Instagram extraction", { url });
 
+    const browserStart = Date.now();
     browser = await getBrowser();
+    browserLaunchTime = Date.now() - browserStart;
+    logger.debug("Browser launched", { durationMs: browserLaunchTime });
 
     const page = await browser.newPage();
+
+    // Enable request interception to block unnecessary resources
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const resourceType = req.resourceType();
+      // Block images, CSS, and fonts - captions are text only
+      if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
 
     // Set viewport to desktop to ensure full content loads
     await page.setViewport({ width: 1280, height: 800 });
@@ -113,7 +139,10 @@ export async function scrapeInstagramContent(
     );
 
     // Navigate to URL - use domcontentloaded for faster loading
+    const pageLoadStart = Date.now();
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+    pageLoadTime = Date.now() - pageLoadStart;
+    logger.debug("Page loaded", { durationMs: pageLoadTime });
 
     // Wait for the main content or caption to appear
     // Instagram captions are often within article elements or specific classes
@@ -126,44 +155,147 @@ export async function scrapeInstagramContent(
     // Small delay to allow dynamic content to render
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Extract content
-    const data = await page.evaluate(() => {
-      // Try to find the caption
-      // Commonly in h1 or span within the first article
-      const article = document.querySelector("article");
-      if (!article)
-        return { text: document.body.innerText, title: document.title };
+    // Multi-strategy extraction with fallbacks
+    let extractedContent: { text: string; title: string; strategy?: string } | null = null;
 
-      // In many IG layouts, the caption is in a span inside an h1 or just a span in the header area
-      // We'll try a few common selectors
-      const captionSelectors = [
-        "h1", // Usually contains the main caption text
-        "span._ap3a._aaco._aacu._aacx._aad7._aade", // Specific modern IG classes
-        "div._a9zs", // Another common caption container
-        'article [role="presentation"] span',
-      ];
+    // Strategy 1: Article text extraction (PRIORITIZED - contains full Instagram caption)
+    // Instagram's og:description meta tag truncates long captions at ~500 chars,
+    // but the full caption is available in the article HTML
+    logger.debug("Trying extraction strategy: article text");
+    try {
+      await page.waitForSelector("article", { timeout: 5000 });
+      const articleData = await page.evaluate(() => {
+        const article = document.querySelector("article");
+        if (!article) return null;
 
-      let caption = "";
-      for (const selector of captionSelectors) {
-        const elements = article.querySelectorAll(selector);
-        for (const el of Array.from(elements)) {
-          const text = el.textContent?.trim() || "";
-          if (text.length > caption.length) {
-            caption = text;
-          }
+        // Extract all text content from the article
+        const textNodes = Array.from(article.querySelectorAll('span, div, p, h1, h2'));
+        const texts = textNodes
+          .map(el => el.textContent?.trim() || '')
+          .filter(text => text.length > 50 && !text.startsWith('http')); // Filter out URLs
+
+        // Return the longest text found (likely the caption)
+        if (texts.length > 0) {
+          const longestText = texts.sort((a, b) => b.length - a.length)[0];
+          return { text: longestText, title: document.title, strategy: 'article-text' };
         }
-      }
 
-      // If we couldn't find a clear caption, grab all text from the article
-      if (!caption || caption.length < 50) {
-        caption = article.innerText;
-      }
+        return null;
+      });
 
+      // Prefer article text if it's substantially long (likely complete caption)
+      if (articleData && articleData.text.length >= 200) {
+        extractedContent = articleData;
+        logger.info("Extraction succeeded with strategy: article text", {
+          contentLength: articleData.text.length
+        });
+      }
+    } catch (error) {
+      logger.debug("Article text strategy failed", { error });
+    }
+
+    // Strategy 2: Semantic HTML (fallback - og:description may be truncated for long captions)
+    if (!extractedContent) {
+      logger.debug("Trying extraction strategy: semantic HTML");
+      try {
+        const semanticData = await page.evaluate(() => {
+          // Try og:description meta tag
+          const ogDescription = document.querySelector('meta[property="og:description"]');
+          if (ogDescription) {
+            const content = ogDescription.getAttribute('content');
+            if (content && content.length > 100) {
+              return { text: content, title: document.title, strategy: 'og:description' };
+            }
+          }
+
+          // Try JSON-LD structured data
+          const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+          for (const script of scripts) {
+            try {
+              const data = JSON.parse(script.textContent || '');
+              if (data.caption && data.caption.length > 50) {
+                return { text: data.caption, title: document.title, strategy: 'json-ld' };
+              }
+              if (data.description && data.description.length > 50) {
+                return { text: data.description, title: document.title, strategy: 'json-ld' };
+              }
+            } catch (e) {
+              // Invalid JSON, continue
+            }
+          }
+
+          return null;
+        });
+
+        if (semanticData) {
+          extractedContent = semanticData;
+          logger.info("Extraction succeeded with strategy: semantic HTML", {
+            strategy: semanticData.strategy,
+            contentLength: semanticData.text.length
+          });
+        }
+      } catch (error) {
+        logger.debug("Semantic HTML strategy failed", { error });
+      }
+    }
+
+    // Strategy 3: Specific selectors (legacy fallback)
+    if (!extractedContent) {
+      logger.debug("Trying extraction strategy: specific selectors");
+      try {
+        const selectorData = await page.evaluate(() => {
+          const article = document.querySelector("article");
+          if (!article) return null;
+
+          // Try common selectors for Instagram captions
+          const captionSelectors = [
+            "h1", // Usually contains the main caption text
+            'article [role="presentation"] span',
+            "span._ap3a._aaco._aacu._aacx._aad7._aade", // Specific modern IG classes (fragile)
+            "div._a9zs", // Another common caption container (fragile)
+          ];
+
+          let caption = "";
+          for (const selector of captionSelectors) {
+            const elements = article.querySelectorAll(selector);
+            for (const el of Array.from(elements)) {
+              const text = el.textContent?.trim() || "";
+              if (text.length > caption.length) {
+                caption = text;
+              }
+            }
+          }
+
+          // Fallback: grab all text from the article
+          if (!caption || caption.length < 50) {
+            caption = article.innerText;
+          }
+
+          return caption ? { text: caption, title: document.title, strategy: 'selectors' } : null;
+        });
+
+        if (selectorData) {
+          extractedContent = selectorData;
+          logger.info("Extraction succeeded with strategy: specific selectors", {
+            contentLength: selectorData.text.length
+          });
+        }
+      } catch (error) {
+        logger.debug("Specific selectors strategy failed", { error });
+      }
+    }
+
+    // If all strategies failed, return error
+    if (!extractedContent) {
+      await browser.close();
+      browser = null;
       return {
-        text: caption,
-        title: document.title,
+        success: false,
+        error: "Could not find recipe content in this Instagram post. Try pasting the caption directly.",
       };
-    });
+    }
+
+    const data = extractedContent;
 
     await browser.close();
     browser = null;
@@ -171,13 +303,18 @@ export async function scrapeInstagramContent(
     if (!data.text || data.text.trim().length === 0) {
       return {
         success: false,
-        error: "Could not extract caption from Instagram page",
+        error: "Could not find recipe content in this Instagram post. Try pasting the caption directly.",
       };
     }
 
+    const totalDuration = Date.now() - startTime;
     logger.info("Instagram content extracted successfully", {
       contentLength: data.text.length,
       title: data.title,
+      strategy: data.strategy,
+      browserLaunchMs: browserLaunchTime,
+      pageLoadMs: pageLoadTime,
+      totalDurationMs: totalDuration,
     });
 
     const processed = preprocessContent(data.text);
@@ -194,10 +331,49 @@ export async function scrapeInstagramContent(
     if (browser) await browser.close();
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    logger.error("Instagram extraction failed", { error: errorMessage });
+
+    const totalDuration = Date.now() - startTime;
+    logger.error("Instagram extraction failed", {
+      error: errorMessage,
+      browserLaunchMs: browserLaunchTime,
+      pageLoadMs: pageLoadTime,
+      totalDurationMs: totalDuration,
+    });
+
+    // Provide helpful error messages based on error type
+    let userFriendlyError = `Failed to scrape Instagram: ${errorMessage}`;
+
+    if (errorMessage.toLowerCase().includes('timeout')) {
+      userFriendlyError = "Instagram is taking too long to respond. This often happens on first request - try again in a few seconds.";
+    } else if (errorMessage.toLowerCase().includes('captcha') ||
+               errorMessage.toLowerCase().includes('login') ||
+               errorMessage.toLowerCase().includes('authentication')) {
+      userFriendlyError = "Instagram requires authentication for this post. Please paste the recipe text directly instead.";
+    } else if (errorMessage.toLowerCase().includes('navigation') ||
+               errorMessage.toLowerCase().includes('net::')) {
+      userFriendlyError = "Unable to connect to Instagram. Please check the URL and try again.";
+    }
+
     return {
       success: false,
-      error: `Failed to scrape Instagram: ${errorMessage}`,
+      error: userFriendlyError,
     };
   }
+}
+
+/**
+ * Public API: Scrape Instagram content with retry logic
+ */
+export async function scrapeInstagramContent(
+  url: string
+): Promise<WebScraperResult> {
+  return retryWithBackoff(
+    () => performInstagramExtraction(url),
+    {
+      maxRetries: 3,
+      initialDelayMs: 1000,
+      maxDelayMs: 8000,
+    },
+    'Instagram extraction'
+  );
 }

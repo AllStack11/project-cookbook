@@ -71,112 +71,99 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
   const scaledIngredients = recipe.ingredients.map(scaleIngredient);
 
   return (
-    <div className="w-full max-w-4xl mx-auto card-modern !p-0 overflow-hidden print:shadow-none print:border-none">
+    <div className="w-full max-w-4xl mx-auto card-cozy overflow-hidden print:shadow-none print:border-none animate-fade-in-up">
       {/* Recipe Header/Banner */}
-      <div className="bg-stone-900 text-white relative">
+      <div className="bg-gradient-to-br from-chocolate-800 via-chocolate-900 to-chocolate-900 text-white relative overflow-hidden">
+        {/* Background image with overlay */}
         {recipe.imageUrl && (
           <div className="absolute inset-0 z-0">
             <img
               src={recipe.imageUrl}
               alt={recipe.title}
-              className="w-full h-full object-cover opacity-40"
+              className="w-full h-full object-cover opacity-30"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-chocolate-900 via-chocolate-900/70 to-chocolate-900/50" />
           </div>
         )}
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none hidden md:block z-10">
-          <svg className="w-32 h-32" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-            <path
-              fillRule="evenodd"
-              d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </div>
 
-        <div className="relative z-10 p-6 md:p-12">
+        {/* Decorative pattern overlay */}
+        <div className="absolute inset-0 opacity-5 pattern-kitchen pointer-events-none" />
+
+        {/* Decorative corner element */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary-500/10 to-transparent rounded-bl-full pointer-events-none hidden md:block" />
+
+        <div className="relative z-10 p-6 md:p-10 lg:p-12">
           <div className="flex flex-col md:flex-row justify-between items-start gap-6">
             <div className="flex-1 w-full">
-              <h1 className="text-2xl md:text-4xl font-black tracking-tight mb-3 md:mb-4">
+              {/* Title */}
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight mb-4 leading-tight">
                 {recipe.title}
               </h1>
+
+              {/* Description */}
               {recipe.description && (
-                <p className="text-stone-400 text-base md:text-lg leading-relaxed max-w-2xl font-medium mb-4">
+                <p className="text-cream-300 text-base md:text-lg leading-relaxed max-w-2xl font-medium mb-5">
                   {recipe.description}
                 </p>
               )}
+
+              {/* Source badge */}
               {recipe.sourcePlatform && (
                 <SourceBadge
                   sourcePlatform={recipe.sourcePlatform}
-                  className="backdrop-blur-md bg-white/10 border-white/20"
+                  className="bg-white/10 backdrop-blur-md border-white/20 text-white"
                 />
               )}
             </div>
-            <div className="flex flex-row md:flex-wrap gap-3 w-full md:w-auto print:hidden">
+
+            {/* Action buttons */}
+            <div className="flex flex-row md:flex-col gap-3 w-full md:w-auto print:hidden">
               <button
                 onClick={handlePrint}
-                className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 md:px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white text-xs md:text-sm font-bold transition-all border border-white/10"
+                className="flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white text-sm font-bold transition-all border border-white/10 hover:border-white/20"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                  />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 Print
               </button>
               <button
                 onClick={handleCopy}
-                className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 md:px-5 py-2.5 bg-primary-500 hover:bg-primary-600 rounded-xl text-white text-xs md:text-sm font-bold transition-all shadow-lg shadow-primary-500/20"
+                className="flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 rounded-xl text-white text-sm font-bold transition-all shadow-lg shadow-primary-500/30"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
-                  />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                 </svg>
-                Copy Text
+                Copy
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 md:gap-6 mt-8 md:mt-10 pt-8 md:pt-10 border-t border-white/10">
+          {/* Recipe Meta Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mt-8 md:mt-10 pt-8 md:pt-10 border-t border-white/10">
             {recipe.servings && (
-              <div className="col-span-2 md:col-span-1 border-b border-white/5 pb-6 md:pb-0 md:border-b-0">
-                <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 md:mb-1">
+              <div className="col-span-2 md:col-span-1 bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <div className="text-cream-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">
                   Servings
                 </div>
-                <div className="flex items-center justify-center md:justify-start gap-4 md:gap-3 print:gap-0">
+                <div className="flex items-center justify-center md:justify-start gap-3 print:gap-0">
                   <button
                     onClick={() => adjustServings(-1)}
                     disabled={currentServings <= 1}
-                    className="print:hidden w-10 h-10 md:w-8 md:h-8 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center text-white font-bold transition-all border border-white/10"
+                    className="print:hidden w-9 h-9 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center text-white font-bold transition-all"
                     aria-label="Decrease servings"
                   >
                     −
                   </button>
-                  <div className="text-xl font-bold min-w-[80px] md:min-w-[60px] text-center">
-                    {currentServings}{" "}
-                    {currentServings === 1 ? "Person" : "People"}
+                  <div className="text-xl font-black min-w-[70px] text-center">
+                    {currentServings}
+                    <span className="text-sm font-medium text-cream-400 ml-1">
+                      {currentServings === 1 ? "person" : "people"}
+                    </span>
                   </div>
                   <button
                     onClick={() => adjustServings(1)}
-                    className="print:hidden w-10 h-10 md:w-8 md:h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white font-bold transition-all border border-white/10"
+                    className="print:hidden w-9 h-9 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white font-bold transition-all"
                     aria-label="Increase servings"
                   >
                     +
@@ -185,31 +172,34 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
               </div>
             )}
             {recipe.prepTime !== undefined && recipe.prepTime > 0 && (
-              <div>
-                <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <div className="text-cream-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">
                   Prep Time
                 </div>
-                <div className="text-xl font-bold">
+                <div className="text-xl font-black flex items-center gap-2">
+                  <span className="text-lg opacity-60">⏱️</span>
                   {formatMinutes(recipe.prepTime)}
                 </div>
               </div>
             )}
             {recipe.cookTime !== undefined && recipe.cookTime > 0 && (
-              <div>
-                <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <div className="text-cream-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">
                   Cook Time
                 </div>
-                <div className="text-xl font-bold">
+                <div className="text-xl font-black flex items-center gap-2">
+                  <span className="text-lg opacity-60">🍳</span>
                   {formatMinutes(recipe.cookTime)}
                 </div>
               </div>
             )}
             {recipe.totalTime !== undefined && recipe.totalTime > 0 && (
-              <div>
-                <div className="text-stone-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+              <div className="col-span-2 md:col-span-1 bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <div className="text-cream-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">
                   Total Time
                 </div>
-                <div className="text-xl font-bold">
+                <div className="text-xl font-black flex items-center gap-2">
+                  <span className="text-lg opacity-60">⏰</span>
                   {formatMinutes(recipe.totalTime)}
                 </div>
               </div>
@@ -218,29 +208,21 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         </div>
       </div>
 
-      <div className="p-6 md:p-12 relative">
-        <div className="absolute top-6 md:top-8 right-6 md:right-8 flex bg-stone-100 rounded-xl p-1 border border-stone-200 print:hidden z-20">
+      {/* Recipe Content */}
+      <div className="p-6 md:p-10 lg:p-12 relative bg-white">
+        {/* View mode toggle */}
+        <div className="absolute top-4 md:top-6 right-4 md:right-6 flex bg-cream-100 rounded-xl p-1 border border-cream-200/50 print:hidden z-20">
           <button
             onClick={() => setViewMode("columns")}
             title="Columns View"
             className={`p-2 rounded-lg transition-all ${
               viewMode === "columns"
-                ? "bg-white text-stone-900 shadow-sm"
-                : "text-stone-400 hover:text-stone-600"
+                ? "bg-white text-chocolate-900 shadow-warm-sm"
+                : "text-chocolate-400 hover:text-chocolate-600"
             }`}
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2.5"
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h2m10-16h-2a2 2 0 00-2 2v12a2 2 0 002 2h2"
-              />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h2m10-16h-2a2 2 0 00-2 2v12a2 2 0 002 2h2" />
             </svg>
           </button>
           <button
@@ -248,49 +230,39 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             title="Document View"
             className={`p-2 rounded-lg transition-all ${
               viewMode === "document"
-                ? "bg-white text-stone-900 shadow-sm"
-                : "text-stone-400 hover:text-stone-600"
+                ? "bg-white text-chocolate-900 shadow-warm-sm"
+                : "text-chocolate-400 hover:text-chocolate-600"
             }`}
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2.5"
-                d="M4 6h16M4 12h16M4 18h7"
-              />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h7" />
             </svg>
           </button>
         </div>
 
         {viewMode === "columns" ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-14">
             {/* Ingredients Column */}
             <div className="lg:col-span-5">
-              <h2 className="text-xl md:text-2xl font-black text-stone-900 mb-6 md:mb-8 flex items-center gap-3">
-                <span className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center text-sm">
+              <h2 className="text-2xl md:text-3xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
+                <span className="w-10 h-10 bg-gradient-to-br from-herb-100 to-herb-50 rounded-xl flex items-center justify-center text-xl shadow-warm-sm">
                   🛒
                 </span>
                 Ingredients
               </h2>
-              <ul className="space-y-4">
+              <ul className="space-y-3">
                 {scaledIngredients.map((ingredient, index) => (
                   <li
                     key={index}
-                    className="flex items-start group pb-4 border-b border-stone-50 last:border-0"
+                    className="flex items-start group p-3 rounded-xl hover:bg-cream-50 transition-colors"
                   >
-                    <div className="flex-shrink-0 w-8 h-8 bg-stone-50 rounded-lg flex items-center justify-center text-sm mr-4 group-hover:scale-110 transition-transform">
+                    <div className="flex-shrink-0 w-9 h-9 bg-cream-100 rounded-lg flex items-center justify-center text-lg mr-4 group-hover:scale-110 group-hover:bg-cream-200 transition-all">
                       {getIngredientEmoji(ingredient.item)}
                     </div>
-                    <div className="flex-1 pt-0.5">
-                      <div className="font-bold text-stone-800">
+                    <div className="flex-1 pt-1">
+                      <div className="font-medium text-chocolate-800">
                         {ingredient.amount && (
-                          <span className="text-primary-600 mr-1.5">
+                          <span className="text-primary-600 font-bold mr-1.5">
                             {ingredient.amount} {ingredient.unit}
                           </span>
                         )}
@@ -308,25 +280,25 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
             {/* Instructions Column */}
             <div className="lg:col-span-7">
-              <h2 className="text-xl md:text-2xl font-black text-stone-900 mb-6 md:mb-8 flex items-center gap-3">
-                <span className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center text-sm">
-                  🍳
+              <h2 className="text-2xl md:text-3xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
+                <span className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-50 rounded-xl flex items-center justify-center text-xl shadow-warm-sm">
+                  👨‍🍳
                 </span>
                 Instructions
               </h2>
-              <div className="space-y-8 md:space-y-10">
+              <div className="space-y-6 md:space-y-8">
                 {recipe.instructions.map((instruction) => (
                   <div
                     key={instruction.step}
-                    className="flex gap-4 md:gap-6 group"
+                    className="flex gap-4 md:gap-5 group"
                   >
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 md:w-10 md:h-10 bg-stone-900 text-white rounded-xl md:rounded-2xl flex items-center justify-center font-black text-xs md:text-sm group-hover:bg-primary-500 transition-colors duration-300">
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-chocolate-800 to-chocolate-900 text-white rounded-2xl flex items-center justify-center font-black text-sm md:text-base group-hover:from-primary-500 group-hover:to-primary-600 transition-all duration-300 shadow-warm">
                         {instruction.step}
                       </div>
                     </div>
                     <div className="pt-1 md:pt-2">
-                      <p className="text-stone-700 leading-relaxed font-medium text-base md:text-lg">
+                      <p className="text-chocolate-700 leading-relaxed font-medium text-base md:text-lg">
                         {instruction.text}
                       </p>
                     </div>
@@ -339,18 +311,19 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           <div className="max-w-3xl mx-auto space-y-12">
             {/* Document View - Ingredients */}
             <section>
-              <h2 className="text-2xl font-black text-stone-900 mb-6 border-b-2 border-stone-100 pb-2">
+              <h2 className="text-2xl font-black text-chocolate-900 mb-6 pb-3 border-b-2 border-cream-200 flex items-center gap-3">
+                <span className="text-2xl">🛒</span>
                 Ingredients
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
                 {scaledIngredients.map((ingredient, index) => (
-                  <div key={index} className="flex items-center gap-3">
+                  <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-cream-50 transition-colors">
                     <span className="text-lg flex-shrink-0">
                       {getIngredientEmoji(ingredient.item)}
                     </span>
-                    <span className="text-stone-700 font-medium">
+                    <span className="text-chocolate-700 font-medium">
                       {ingredient.amount && (
-                        <span className="text-primary-700 font-bold">
+                        <span className="text-primary-600 font-bold">
                           {ingredient.amount} {ingredient.unit}{" "}
                         </span>
                       )}
@@ -363,16 +336,17 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
             {/* Document View - Instructions */}
             <section>
-              <h2 className="text-2xl font-black text-stone-900 mb-6 border-b-2 border-stone-100 pb-2">
+              <h2 className="text-2xl font-black text-chocolate-900 mb-6 pb-3 border-b-2 border-cream-200 flex items-center gap-3">
+                <span className="text-2xl">👨‍🍳</span>
                 Preparation
               </h2>
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {recipe.instructions.map((instruction) => (
                   <div key={instruction.step} className="flex gap-4">
-                    <span className="font-black text-stone-300 text-xl flex-shrink-0 w-8">
+                    <span className="font-black text-cream-400 text-xl flex-shrink-0 w-8">
                       {String(instruction.step).padStart(2, "0")}
                     </span>
-                    <p className="text-stone-700 leading-relaxed text-lg">
+                    <p className="text-chocolate-700 leading-relaxed text-lg">
                       {instruction.text}
                     </p>
                   </div>
@@ -384,19 +358,18 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
         {/* Notes Section */}
         {recipe.notes && recipe.notes.length > 0 && (
-          <div className="mt-12 md:mt-16 p-6 md:p-8 bg-stone-50 rounded-[1.5rem] md:rounded-[2rem] border border-stone-100">
-            <h3 className="text-lg font-black text-stone-900 mb-4 uppercase tracking-wider">
+          <div className="mt-12 md:mt-16 p-6 md:p-8 bg-gradient-to-br from-cream-50 to-cream-100/50 rounded-3xl border border-cream-200/50">
+            <h3 className="text-lg font-black text-chocolate-900 mb-4 flex items-center gap-2 uppercase tracking-wider">
+              <span className="text-xl">📝</span>
               Chef's Notes
             </h3>
             <ul className="space-y-3">
               {recipe.notes.map((note, index) => (
                 <li
                   key={index}
-                  className="flex items-start text-stone-600 font-medium"
+                  className="flex items-start text-chocolate-600 font-medium"
                 >
-                  <span className="text-primary-500 mr-3 text-xl leading-none">
-                    ·
-                  </span>
+                  <span className="text-primary-500 mr-3 text-xl leading-none">•</span>
                   <span>{note}</span>
                 </li>
               ))}
@@ -406,59 +379,60 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
         {/* Nutrition Section */}
         {recipe.nutrition && (
-          <div className="mt-12 md:mt-16 pt-8 md:pt-12 border-t border-stone-100">
-            <h3 className="text-lg md:text-xl font-black text-stone-900 mb-6 md:mb-8">
+          <div className="mt-12 md:mt-16 pt-8 md:pt-10 border-t border-cream-200">
+            <h3 className="text-xl md:text-2xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
+              <span className="text-2xl">📊</span>
               Nutrition Facts
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {recipe.nutrition.calories && (
-                <div className="p-4 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
-                  <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-40 transition-opacity">
+                <div className="p-5 md:p-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl border border-red-100 relative overflow-hidden group hover:shadow-warm transition-all">
+                  <div className="absolute top-3 right-3 text-2xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🔥
                   </div>
-                  <div className="text-stone-400 text-[10px] font-black uppercase tracking-widest mb-1">
+                  <div className="text-chocolate-400 text-[10px] font-bold uppercase tracking-widest mb-1">
                     Calories
                   </div>
-                  <div className="text-2xl font-black text-stone-800">
+                  <div className="text-2xl font-black text-chocolate-800">
                     {recipe.nutrition.calories}
                   </div>
                 </div>
               )}
               {recipe.nutrition.protein && (
-                <div className="p-4 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
-                  <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-40 transition-opacity">
+                <div className="p-5 md:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 relative overflow-hidden group hover:shadow-warm transition-all">
+                  <div className="absolute top-3 right-3 text-2xl opacity-20 group-hover:opacity-40 transition-opacity">
                     💪
                   </div>
-                  <div className="text-stone-400 text-[10px] font-black uppercase tracking-widest mb-1">
+                  <div className="text-chocolate-400 text-[10px] font-bold uppercase tracking-widest mb-1">
                     Protein
                   </div>
-                  <div className="text-xl md:text-2xl font-black text-stone-800">
+                  <div className="text-xl md:text-2xl font-black text-chocolate-800">
                     {recipe.nutrition.protein}
                   </div>
                 </div>
               )}
               {recipe.nutrition.carbs && (
-                <div className="p-4 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
-                  <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-40 transition-opacity">
+                <div className="p-5 md:p-6 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl border border-amber-100 relative overflow-hidden group hover:shadow-warm transition-all">
+                  <div className="absolute top-3 right-3 text-2xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🍞
                   </div>
-                  <div className="text-stone-400 text-[10px] font-black uppercase tracking-widest mb-1">
+                  <div className="text-chocolate-400 text-[10px] font-bold uppercase tracking-widest mb-1">
                     Carbs
                   </div>
-                  <div className="text-xl md:text-2xl font-black text-stone-800">
+                  <div className="text-xl md:text-2xl font-black text-chocolate-800">
                     {recipe.nutrition.carbs}
                   </div>
                 </div>
               )}
               {recipe.nutrition.fat && (
-                <div className="p-4 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 relative overflow-hidden group">
-                  <div className="absolute top-2 right-2 text-xl opacity-20 group-hover:opacity-40 transition-opacity">
+                <div className="p-5 md:p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100 relative overflow-hidden group hover:shadow-warm transition-all">
+                  <div className="absolute top-3 right-3 text-2xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🥑
                   </div>
-                  <div className="text-stone-400 text-[10px] font-black uppercase tracking-widest mb-1">
+                  <div className="text-chocolate-400 text-[10px] font-bold uppercase tracking-widest mb-1">
                     Fat
                   </div>
-                  <div className="text-2xl font-black text-stone-800">
+                  <div className="text-2xl font-black text-chocolate-800">
                     {recipe.nutrition.fat}
                   </div>
                 </div>
@@ -469,56 +443,39 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
         {/* Source Link and Footer */}
         {(recipe.sourceUrl || recipe.confidenceScore !== undefined) && (
-          <div className="mt-12 pt-8 border-t border-stone-100">
+          <div className="mt-12 pt-8 border-t border-cream-200">
             {recipe.sourceUrl && (
-              <div className="text-sm text-stone-400 font-medium flex items-center gap-2 mb-3">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                  />
+              <div className="text-sm text-chocolate-400 font-medium flex items-center gap-2 mb-3">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
                 Extracted from:{" "}
                 <a
                   href={recipe.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary-600 hover:text-primary-700 underline underline-offset-4 decoration-primary-200"
+                  className="text-primary-600 hover:text-primary-700 underline underline-offset-4 decoration-primary-200 hover:decoration-primary-400 transition-colors"
                 >
                   {recipe.sourceUrl}
                 </a>
               </div>
             )}
-            <div className="flex items-center justify-between flex-wrap gap-4 text-xs text-stone-400">
+            <div className="flex items-center justify-between flex-wrap gap-4 text-xs text-chocolate-400">
               {recipe.confidenceScore !== undefined && (
                 <div
-                  className="flex items-center gap-1.5"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-herb-50 rounded-full"
                   title="Extraction quality score based on completeness and detail"
                 >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
+                  <svg className="w-3.5 h-3.5 text-herb-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>Quality score: {recipe.confidenceScore}%</span>
+                  <span className="font-medium text-herb-700">Quality: {recipe.confidenceScore}%</span>
                 </div>
               )}
-              <div className="print:hidden">Enjoy your meal! ✨</div>
+              <div className="print:hidden flex items-center gap-2 text-chocolate-500">
+                <span>Enjoy your meal!</span>
+                <span className="text-lg">✨</span>
+              </div>
             </div>
           </div>
         )}
@@ -779,7 +736,7 @@ function getIngredientEmoji(item: string): string {
     lowercaseItem.includes("pepper") &&
     !lowercaseItem.includes("bell pepper")
   )
-    return "🧂"; // Use salt shaker for black pepper too
+    return "🧂";
   if (
     lowercaseItem.includes("spice") ||
     lowercaseItem.includes("spices") ||
@@ -890,7 +847,7 @@ function getIngredientEmoji(item: string): string {
   )
     return "🍯";
 
-  return "▫️"; // Default subtle bullet
+  return "•";
 }
 
 function formatRecipeAsText(recipe: Recipe): string {

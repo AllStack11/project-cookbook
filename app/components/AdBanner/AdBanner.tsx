@@ -42,35 +42,44 @@ const AdBanner = ({
   if (!adsenseClientId || adsenseClientId === "ca-pub-0000000000000000") {
     return (
       <div
-        className={`bg-stone-100 border-2 border-dashed border-stone-200 rounded-xl flex flex-col items-center justify-center p-8 text-stone-400 select-none ${className}`}
+        className={`card-cozy bg-gradient-to-br from-cream-50 to-cream-100/50 border-2 border-dashed border-cream-300 flex flex-col items-center justify-center p-6 md:p-8 text-chocolate-400 select-none ${className}`}
         style={{ minHeight: "100px", ...style }}
       >
-        <span className="text-xs font-bold uppercase tracking-widest mb-2 opacity-50">
-          Advertisement
-        </span>
-        <div className="flex items-center gap-2">
-          <svg
-            className="w-5 h-5 opacity-30"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <span className="text-sm font-medium">Ad Placeholder ({slot})</span>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-cream-200 rounded-xl flex items-center justify-center">
+            <svg
+              className="w-5 h-5 text-cream-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-cream-500 block">
+              Advertisement
+            </span>
+            <span className="text-xs font-medium text-cream-400">
+              Placeholder ({slot})
+            </span>
+          </div>
         </div>
+        <p className="text-xs text-cream-400 text-center max-w-xs">
+          Ads help keep Just The Recipe free for everyone
+        </p>
       </div>
     );
   }
 
   return (
     <div
-      className={`ad-container overflow-hidden flex justify-center w-full my-4 ${className}`}
+      className={`ad-container overflow-hidden flex justify-center w-full my-4 rounded-2xl ${className}`}
       style={style}
     >
       <ins

@@ -23,9 +23,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "YouTube",
-          bgColor: "bg-red-50",
-          textColor: "text-red-700",
-          borderColor: "border-red-200",
+          bgColor: "bg-red-500/10",
+          textColor: "text-red-600",
+          borderColor: "border-red-500/20",
+          hoverBg: "hover:bg-red-500/15",
         };
       case SourceType.INSTAGRAM:
         return {
@@ -35,9 +36,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "Instagram",
-          bgColor: "bg-pink-50",
-          textColor: "text-pink-700",
-          borderColor: "border-pink-200",
+          bgColor: "bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-orange-500/10",
+          textColor: "text-pink-600",
+          borderColor: "border-pink-500/20",
+          hoverBg: "hover:from-purple-500/15 hover:via-pink-500/15 hover:to-orange-500/15",
         };
       case SourceType.TIKTOK:
         return {
@@ -47,9 +49,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "TikTok",
-          bgColor: "bg-cyan-50",
-          textColor: "text-cyan-700",
-          borderColor: "border-cyan-200",
+          bgColor: "bg-cyan-500/10",
+          textColor: "text-cyan-600",
+          borderColor: "border-cyan-500/20",
+          hoverBg: "hover:bg-cyan-500/15",
         };
       case SourceType.TWITTER:
         return {
@@ -59,9 +62,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "X (Twitter)",
-          bgColor: "bg-slate-50",
+          bgColor: "bg-slate-500/10",
           textColor: "text-slate-700",
-          borderColor: "border-slate-200",
+          borderColor: "border-slate-500/20",
+          hoverBg: "hover:bg-slate-500/15",
         };
       case SourceType.FACEBOOK:
         return {
@@ -71,9 +75,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "Facebook",
-          bgColor: "bg-blue-50",
-          textColor: "text-blue-700",
-          borderColor: "border-blue-200",
+          bgColor: "bg-blue-500/10",
+          textColor: "text-blue-600",
+          borderColor: "border-blue-500/20",
+          hoverBg: "hover:bg-blue-500/15",
         };
       case SourceType.PINTEREST:
         return {
@@ -83,9 +88,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "Pinterest",
-          bgColor: "bg-red-50",
-          textColor: "text-red-700",
-          borderColor: "border-red-200",
+          bgColor: "bg-red-500/10",
+          textColor: "text-red-600",
+          borderColor: "border-red-500/20",
+          hoverBg: "hover:bg-red-500/15",
         };
       case SourceType.REDDIT:
         return {
@@ -95,9 +101,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "Reddit",
-          bgColor: "bg-orange-50",
-          textColor: "text-orange-700",
-          borderColor: "border-orange-200",
+          bgColor: "bg-orange-500/10",
+          textColor: "text-orange-600",
+          borderColor: "border-orange-500/20",
+          hoverBg: "hover:bg-orange-500/15",
         };
       case SourceType.BLOG:
         return {
@@ -117,9 +124,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "Blog",
-          bgColor: "bg-sky-400/20",
-          textColor: "text-sky-300",
-          borderColor: "border-sky-400/30",
+          bgColor: "bg-primary-500/10",
+          textColor: "text-primary-600",
+          borderColor: "border-primary-500/20",
+          hoverBg: "hover:bg-primary-500/15",
         };
       case SourceType.SOCIAL_MEDIA:
         return {
@@ -139,9 +147,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "Social Media",
-          bgColor: "bg-purple-50",
-          textColor: "text-purple-700",
-          borderColor: "border-purple-200",
+          bgColor: "bg-purple-500/10",
+          textColor: "text-purple-600",
+          borderColor: "border-purple-500/20",
+          hoverBg: "hover:bg-purple-500/15",
         };
       case SourceType.TEXT:
         return {
@@ -161,9 +170,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "Text Input",
-          bgColor: "bg-stone-50",
-          textColor: "text-stone-700",
-          borderColor: "border-stone-200",
+          bgColor: "bg-chocolate-500/10",
+          textColor: "text-chocolate-600",
+          borderColor: "border-chocolate-500/20",
+          hoverBg: "hover:bg-chocolate-500/15",
         };
       default:
         return {
@@ -183,9 +193,10 @@ export default function SourceBadge({
             </svg>
           ),
           label: "Web",
-          bgColor: "bg-stone-50",
-          textColor: "text-stone-700",
-          borderColor: "border-stone-200",
+          bgColor: "bg-herb-500/10",
+          textColor: "text-herb-600",
+          borderColor: "border-herb-500/20",
+          hoverBg: "hover:bg-herb-500/15",
         };
     }
   };
@@ -194,7 +205,7 @@ export default function SourceBadge({
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${config.bgColor} ${config.textColor} ${config.borderColor} text-sm font-bold ${className}`}
+      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border ${config.bgColor} ${config.textColor} ${config.borderColor} ${config.hoverBg} text-sm font-bold transition-all duration-200 ${className}`}
       title={`Extracted from ${config.label}`}
     >
       {config.icon}
