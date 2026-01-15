@@ -28,6 +28,25 @@ Each entry should include:
 
 ## Log Entries
 
+- 2026-01-15, Feature, Added extraction support for YouTube Shorts, Enabled recipe extraction from youtube.com/shorts/ URLs by updating URL validation and ID extraction logic.
+- **2026-01-15**: Feature: Functional AI Status Indicator
+  - **Type**: Feature / UI
+  - **Description**: Converted the static AI status banner into a functional indicator.
+    - Created `/api/health/gemini` endpoint to check Google Gemini API availability.
+    - Implemented `AiStatusIndicator` client component with real-time status fetching and visual states (Online, Offline, Loading).
+    - Added Vercel Edge caching (5 minutes) for the health check to optimize performance.
+  - **Impact**: Provides users with real-time feedback on the availability of the recipe extraction service.
+
+- **2026-01-15**: UI Enhancement: Moved AI status banner to footer
+  - **Type**: UI / Enhancement
+  - **Description**: Moved the "AI-Powered" status banner from the header to the footer. The new indicator is more subtle, featuring a smaller icon, lower opacity, and no pulsing animation, blending better with the footer's aesthetic.
+  - **Impact**: Cleaner header UI and a more integrated, less distracting AI status indicator.
+
+- **2026-01-15**: Feature: Added specific emoji detection for oil
+  - **Type**: Feature / UI
+  - **Description**: Added dedicated emoji detection for "oil" and "oils" in the recipe card's ingredient list. Previously, oils were grouped with sauces and vinegars using the "🫗" (pouring liquid) emoji. Now, they use the "🧴" (bottle) emoji for better visual distinction.
+  - **Impact**: Improves the visual appeal and clarity of the ingredient list by providing a more specific icon for oils.
+
 - **2026-01-11**: Optimization: Mobile-first UI refinements
   - **Type**: Optimization / UI
   - **Description**: Optimized the entire application for mobile devices while preserving the exact desktop experience.

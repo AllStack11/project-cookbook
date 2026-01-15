@@ -138,22 +138,25 @@ async function performInstagramExtraction(url: string): Promise<WebScraperResult
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     );
 
-    // Navigate to URL - use domcontentloaded for faster loading
+    // Navigate to URL - use networkidle2 to ensure JS has finished rendering
     const pageLoadStart = Date.now();
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 25000 });
     pageLoadTime = Date.now() - pageLoadStart;
     logger.debug("Page loaded", { durationMs: pageLoadTime });
 
-    // Wait for the main content or caption to appear
-    // Instagram captions are often within article elements or specific classes
-    try {
-      await page.waitForSelector("article", { timeout: 5000 });
-    } catch (e) {
-      logger.warn("Timeout waiting for article selector, proceeding anyway");
-    }
-
-    // Small delay to allow dynamic content to render
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Smart wait for caption content to appear (max 3s, returns early when ready)
+    await page.waitForFunction(
+      () => {
+        const article = document.querySelector('article');
+        if (!article) return false;
+        // Check if article has substantial text content
+        return article.innerText.length > 100;
+      },
+      { timeout: 3000 }
+    ).catch(() => {
+      // Content not detected yet, proceed anyway with extraction strategies
+      logger.debug("Smart wait timed out, proceeding with extraction strategies");
+    });
 
     // Multi-strategy extraction with fallbacks
     let extractedContent: { text: string; title: string; strategy?: string } | null = null;
@@ -163,7 +166,7 @@ async function performInstagramExtraction(url: string): Promise<WebScraperResult
     // but the full caption is available in the article HTML
     logger.debug("Trying extraction strategy: article text");
     try {
-      await page.waitForSelector("article", { timeout: 5000 });
+      await page.waitForSelector("article", { timeout: 8000 });
       const articleData = await page.evaluate(() => {
         const article = document.querySelector("article");
         if (!article) return null;
@@ -191,7 +194,10 @@ async function performInstagramExtraction(url: string): Promise<WebScraperResult
         });
       }
     } catch (error) {
-      logger.debug("Article text strategy failed", { error });
+      logger.debug("Article text strategy failed - article element not found", {
+        error,
+        hint: "Instagram may have changed their DOM structure or the post requires login"
+      });
     }
 
     // Strategy 2: Semantic HTML (fallback - og:description may be truncated for long captions)

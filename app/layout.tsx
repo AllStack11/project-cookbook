@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import AiStatusIndicator from "./components/AiStatusIndicator";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -66,9 +67,18 @@ export default function RootLayout({
                     </div>
                     {/* Steam effect */}
                     <div className="absolute -top-1 left-1/2 -translate-x-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="w-1 h-2 bg-cream-400/60 rounded-full animate-steam" style={{ animationDelay: "0ms" }} />
-                      <div className="w-1 h-2 bg-cream-400/60 rounded-full animate-steam" style={{ animationDelay: "200ms" }} />
-                      <div className="w-1 h-2 bg-cream-400/60 rounded-full animate-steam" style={{ animationDelay: "400ms" }} />
+                      <div
+                        className="w-1 h-2 bg-cream-400/60 rounded-full animate-steam"
+                        style={{ animationDelay: "0ms" }}
+                      />
+                      <div
+                        className="w-1 h-2 bg-cream-400/60 rounded-full animate-steam"
+                        style={{ animationDelay: "200ms" }}
+                      />
+                      <div
+                        className="w-1 h-2 bg-cream-400/60 rounded-full animate-steam"
+                        style={{ animationDelay: "400ms" }}
+                      />
                     </div>
                   </div>
 
@@ -86,10 +96,7 @@ export default function RootLayout({
 
                 {/* Optional navigation placeholder for future */}
                 <div className="flex items-center gap-2">
-                  <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-herb-50 border border-herb-200/50 rounded-full">
-                    <div className="w-2 h-2 bg-herb-500 rounded-full animate-pulse" />
-                    <span className="text-xs font-semibold text-herb-700">AI-Powered</span>
-                  </div>
+                  {/* AI status moved to footer */}
                 </div>
               </div>
             </div>
@@ -120,8 +127,12 @@ export default function RootLayout({
                     </svg>
                   </div>
                   <div>
-                    <p className="font-bold text-chocolate-800">Just The Recipe</p>
-                    <p className="text-xs text-chocolate-500">Crafted for home chefs</p>
+                    <p className="font-bold text-chocolate-800">
+                      Just The Recipe
+                    </p>
+                    <p className="text-xs text-chocolate-500">
+                      Crafted for home chefs
+                    </p>
                   </div>
                 </div>
 
@@ -141,10 +152,16 @@ export default function RootLayout({
               </div>
 
               {/* Subtle divider with kitchen utensil pattern */}
-              <div className="mt-8 pt-6 border-t border-cream-200/50 flex items-center justify-center gap-2 text-chocolate-400">
-                <span className="text-xs font-medium">Made with</span>
-                <span className="text-primary-500">❤️</span>
-                <span className="text-xs font-medium">for food lovers everywhere</span>
+              <div className="mt-8 pt-6 border-t border-cream-200/50 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-chocolate-400">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium">Made with</span>
+                  <span className="text-primary-500">❤️</span>
+                  <span className="text-xs font-medium">
+                    for food lovers everywhere
+                  </span>
+                </div>
+                <div className="hidden sm:block w-1 h-1 bg-cream-300 rounded-full" />
+                <AiStatusIndicator />
               </div>
             </div>
           </footer>

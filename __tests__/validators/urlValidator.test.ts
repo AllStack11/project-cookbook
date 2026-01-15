@@ -29,6 +29,13 @@ describe("urlValidator", () => {
       expect(result.videoId).toBe("dQw4w9WgXcQ");
     });
 
+    it("should validate YouTube Shorts URL", () => {
+      const result = validateUrl("https://www.youtube.com/shorts/AdrDNhsh9Iw");
+      expect(result.isValid).toBe(true);
+      expect(result.sourceType).toBe(SourceType.YOUTUBE);
+      expect(result.videoId).toBe("AdrDNhsh9Iw");
+    });
+
     it("should validate Instagram URL as social media", () => {
       const result = validateUrl("https://www.instagram.com/p/ABC123/");
       expect(result.isValid).toBe(true);
@@ -102,6 +109,13 @@ describe("urlValidator", () => {
         "https://www.youtube.com/embed/dQw4w9WgXcQ"
       );
       expect(id).toBe("dQw4w9WgXcQ");
+    });
+
+    it("should extract video ID from Shorts URL", () => {
+      const id = extractYoutubeVideoId(
+        "https://www.youtube.com/shorts/AdrDNhsh9Iw"
+      );
+      expect(id).toBe("AdrDNhsh9Iw");
     });
 
     it("should return null for non-YouTube URL", () => {

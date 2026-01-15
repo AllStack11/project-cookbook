@@ -122,8 +122,18 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 onClick={handlePrint}
                 className="flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white text-sm font-bold transition-all border border-white/10 hover:border-white/20"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                  />
                 </svg>
                 Print
               </button>
@@ -131,8 +141,18 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 onClick={handleCopy}
                 className="flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 rounded-xl text-white text-sm font-bold transition-all shadow-lg shadow-primary-500/30"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                  />
                 </svg>
                 Copy
               </button>
@@ -221,8 +241,18 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 : "text-chocolate-400 hover:text-chocolate-600"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h2m10-16h-2a2 2 0 00-2 2v12a2 2 0 002 2h2" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h2m10-16h-2a2 2 0 00-2 2v12a2 2 0 002 2h2"
+              />
             </svg>
           </button>
           <button
@@ -234,8 +264,18 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 : "text-chocolate-400 hover:text-chocolate-600"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h7" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M4 6h16M4 12h16M4 18h7"
+              />
             </svg>
           </button>
         </div>
@@ -317,7 +357,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
                 {scaledIngredients.map((ingredient, index) => (
-                  <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-cream-50 transition-colors">
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-cream-50 transition-colors"
+                  >
                     <span className="text-lg flex-shrink-0">
                       {getIngredientEmoji(ingredient.item)}
                     </span>
@@ -369,7 +412,9 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                   key={index}
                   className="flex items-start text-chocolate-600 font-medium"
                 >
-                  <span className="text-primary-500 mr-3 text-xl leading-none">•</span>
+                  <span className="text-primary-500 mr-3 text-xl leading-none">
+                    •
+                  </span>
                   <span>{note}</span>
                 </li>
               ))}
@@ -446,8 +491,18 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           <div className="mt-12 pt-8 border-t border-cream-200">
             {recipe.sourceUrl && (
               <div className="text-sm text-chocolate-400 font-medium flex items-center gap-2 mb-3">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
                 </svg>
                 Extracted from:{" "}
                 <a
@@ -466,10 +521,22 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-herb-50 rounded-full"
                   title="Extraction quality score based on completeness and detail"
                 >
-                  <svg className="w-3.5 h-3.5 text-herb-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-3.5 h-3.5 text-herb-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
-                  <span className="font-medium text-herb-700">Quality: {recipe.confidenceScore}%</span>
+                  <span className="font-medium text-herb-700">
+                    Quality: {recipe.confidenceScore}%
+                  </span>
                 </div>
               )}
               <div className="print:hidden flex items-center gap-2 text-chocolate-500">
@@ -746,9 +813,9 @@ function getIngredientEmoji(item: string): string {
     lowercaseItem.includes("turmeric")
   )
     return "🏺";
+  if (lowercaseItem.includes("oil") || lowercaseItem.includes("oils"))
+    return "🧴";
   if (
-    lowercaseItem.includes("oil") ||
-    lowercaseItem.includes("oils") ||
     lowercaseItem.includes("vinegar") ||
     lowercaseItem.includes("vinegars") ||
     lowercaseItem.includes("sauce") ||
