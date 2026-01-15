@@ -546,6 +546,15 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             </div>
           </div>
         )}
+
+        {/* Bottom Ad Banner */}
+        <div className="mt-8 md:mt-12 print:hidden">
+          <AdBanner
+            slot="recipe-bottom"
+            format="fluid"
+            className="max-w-3xl mx-auto"
+          />
+        </div>
       </div>
     </div>
   );
