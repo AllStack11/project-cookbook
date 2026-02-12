@@ -42,6 +42,12 @@ describe("urlValidator", () => {
       expect(result.sourceType).toBe(SourceType.INSTAGRAM);
     });
 
+    it("should reject lookalike social hostnames", () => {
+      const result = validateUrl("https://evilinstagram.com/p/ABC123/");
+      expect(result.isValid).toBe(true);
+      expect(result.sourceType).toBe(SourceType.BLOG);
+    });
+
     it("should validate TikTok URL as social media", () => {
       const result = validateUrl("https://www.tiktok.com/@user/video/123456");
       expect(result.isValid).toBe(true);
@@ -150,6 +156,13 @@ describe("urlValidator", () => {
       );
       expect(isSocialMediaUrl("https://www.facebook.com/post/123")).toBe(true);
       expect(isSocialMediaUrl("https://www.pinterest.com/pin/123")).toBe(true);
+    });
+
+    it("should require exact domain boundary matching", () => {
+      expect(isSocialMediaUrl("https://m.instagram.com/p/ABC123/")).toBe(true);
+      expect(isSocialMediaUrl("https://evilinstagram.com/p/ABC123/")).toBe(
+        false
+      );
     });
 
     it("should return false for non-social media URLs", () => {

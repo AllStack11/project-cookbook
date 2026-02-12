@@ -1,4 +1,5 @@
 import { SourceType } from "@/types/recipe";
+import { matchesDomain } from "@/lib/utils/domainMatcher";
 
 export interface UrlValidationResult {
   isValid: boolean;
@@ -42,6 +43,10 @@ const RECIPE_URL_KEYWORDS = [
   "bread",
   "pasta",
 ];
+
+function matchesAnyDomain(hostname: string, domains: string[]): boolean {
+  return domains.some((domain) => matchesDomain(hostname, domain));
+}
 
 export function validateUrl(url: string): UrlValidationResult {
   if (!url || url.trim().length === 0) {
@@ -90,7 +95,7 @@ export function validateUrl(url: string): UrlValidationResult {
 
   // Check Instagram
   if (
-    SOCIAL_MEDIA_PLATFORMS.INSTAGRAM.some((domain) => hostname.includes(domain))
+    matchesAnyDomain(hostname, SOCIAL_MEDIA_PLATFORMS.INSTAGRAM)
   ) {
     return {
       isValid: true,
@@ -100,7 +105,7 @@ export function validateUrl(url: string): UrlValidationResult {
 
   // Check TikTok
   if (
-    SOCIAL_MEDIA_PLATFORMS.TIKTOK.some((domain) => hostname.includes(domain))
+    matchesAnyDomain(hostname, SOCIAL_MEDIA_PLATFORMS.TIKTOK)
   ) {
     return {
       isValid: true,
@@ -110,7 +115,7 @@ export function validateUrl(url: string): UrlValidationResult {
 
   // Check Twitter/X
   if (
-    SOCIAL_MEDIA_PLATFORMS.TWITTER.some((domain) => hostname.includes(domain))
+    matchesAnyDomain(hostname, SOCIAL_MEDIA_PLATFORMS.TWITTER)
   ) {
     return {
       isValid: true,
@@ -120,7 +125,7 @@ export function validateUrl(url: string): UrlValidationResult {
 
   // Check Facebook
   if (
-    SOCIAL_MEDIA_PLATFORMS.FACEBOOK.some((domain) => hostname.includes(domain))
+    matchesAnyDomain(hostname, SOCIAL_MEDIA_PLATFORMS.FACEBOOK)
   ) {
     return {
       isValid: true,
@@ -130,7 +135,7 @@ export function validateUrl(url: string): UrlValidationResult {
 
   // Check Pinterest
   if (
-    SOCIAL_MEDIA_PLATFORMS.PINTEREST.some((domain) => hostname.includes(domain))
+    matchesAnyDomain(hostname, SOCIAL_MEDIA_PLATFORMS.PINTEREST)
   ) {
     return {
       isValid: true,
@@ -140,7 +145,7 @@ export function validateUrl(url: string): UrlValidationResult {
 
   // Check Reddit
   if (
-    SOCIAL_MEDIA_PLATFORMS.REDDIT.some((domain) => hostname.includes(domain))
+    matchesAnyDomain(hostname, SOCIAL_MEDIA_PLATFORMS.REDDIT)
   ) {
     return {
       isValid: true,
@@ -171,7 +176,7 @@ export function isSocialMediaUrl(url: string): boolean {
 
     // Check if URL matches any social media platform
     return Object.values(SOCIAL_MEDIA_PLATFORMS).some((domains) =>
-      domains.some((domain) => hostname.includes(domain))
+      matchesAnyDomain(hostname, domains)
     );
   } catch {
     return false;

@@ -3,6 +3,7 @@ import { preprocessContent } from "./preprocessor";
 import { scrapeInstagramContent } from "./instagramExtractor";
 import { getRandomUserAgent } from "./userAgents";
 import { validateUrlSafety } from "@/lib/utils/urlSanitizer";
+import { matchesDomain } from "@/lib/utils/domainMatcher";
 
 import { Recipe } from "@/types/recipe";
 
@@ -18,6 +19,124 @@ export interface WebScraperResult {
   recipe?: Recipe; // Optional pre-parsed recipe
 }
 
+const FETCH_TIMEOUT_MS = 10000;
+const MAX_HTML_BYTES = 2_000_000;
+const MAX_REDIRECTS = 3;
+
+function isInstagramUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return matchesDomain(parsed.hostname, "instagram.com");
+  } catch {
+    return false;
+  }
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs: number = FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function readResponseTextWithLimit(
+  response: Response,
+  maxBytes: number
+): Promise<string> {
+  const contentLengthHeader = response.headers?.get?.("content-length");
+  const contentLength = contentLengthHeader ? parseInt(contentLengthHeader, 10) : NaN;
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new Error(`Response body too large (${contentLength} bytes)`);
+  }
+
+  if (!response.body || typeof response.body.getReader !== "function") {
+    const text = await response.text();
+    const size = new TextEncoder().encode(text).length;
+    if (size > maxBytes) {
+      throw new Error(`Response body too large (${size} bytes)`);
+    }
+    return text;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let totalBytes = 0;
+  let text = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    totalBytes += value.byteLength;
+    if (totalBytes > maxBytes) {
+      reader.cancel().catch(() => undefined);
+      throw new Error(`Response body exceeded ${maxBytes} bytes`);
+    }
+
+    text += decoder.decode(value, { stream: true });
+  }
+
+  text += decoder.decode();
+  return text;
+}
+
+async function fetchHtmlWithSafety(url: string): Promise<{ response: Response; html?: string }> {
+  let currentUrl = url;
+
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
+    const safetyCheck = await validateUrlSafety(currentUrl);
+    if (!safetyCheck.safe) {
+      throw new Error(safetyCheck.error || "URL blocked for security reasons");
+    }
+
+    const response = await fetchWithTimeout(currentUrl, {
+      headers: {
+        "User-Agent": getRandomUserAgent(),
+      },
+      redirect: "manual",
+    });
+
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      const location = response.headers?.get?.("location");
+      if (!location) {
+        throw new Error(`Redirect response missing Location header (${response.status})`);
+      }
+
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
+
+    if (!response.ok) {
+      return { response };
+    }
+
+    const contentType = response.headers?.get?.("content-type")?.toLowerCase() || "";
+    if (
+      contentType &&
+      !contentType.includes("text/html") &&
+      !contentType.includes("application/xhtml+xml")
+    ) {
+      throw new Error(`Unexpected content type: ${contentType}`);
+    }
+
+    const html = await readResponseTextWithLimit(response, MAX_HTML_BYTES);
+    return { response, html };
+  }
+
+  throw new Error(`Too many redirects (>${MAX_REDIRECTS})`);
+}
+
 export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
   try {
     if (!url || url.trim().length === 0) {
@@ -25,11 +144,6 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
         success: false,
         error: "URL is required",
       };
-    }
-
-    // Special handling for Instagram
-    if (url.includes("instagram.com")) {
-      return scrapeInstagramContent(url);
     }
 
     // SSRF protection: validate URL doesn't point to internal resources
@@ -41,18 +155,12 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
       };
     }
 
-    // Fetch HTML with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    // Special handling for Instagram
+    if (isInstagramUrl(url)) {
+      return scrapeInstagramContent(url);
+    }
 
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": getRandomUserAgent(),
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
+    const { response, html } = await fetchHtmlWithSafety(url);
 
     if (!response.ok) {
       return {
@@ -61,7 +169,12 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
       };
     }
 
-    const html = await response.text();
+    if (!html) {
+      return {
+        success: false,
+        error: "No HTML content found on page",
+      };
+    }
 
     // Parse with Cheerio
     const $ = cheerio.load(html);
@@ -151,11 +264,6 @@ export async function extractStructuredRecipe(
   url: string
 ): Promise<WebScraperResult> {
   try {
-    // Special handling for Instagram
-    if (url.includes("instagram.com")) {
-      return scrapeInstagramContent(url);
-    }
-
     // SSRF protection: validate URL doesn't point to internal resources
     const safetyCheck = await validateUrlSafety(url);
     if (!safetyCheck.safe) {
@@ -165,18 +273,12 @@ export async function extractStructuredRecipe(
       };
     }
 
-    // Fetch with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    // Special handling for Instagram
+    if (isInstagramUrl(url)) {
+      return scrapeInstagramContent(url);
+    }
 
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": getRandomUserAgent(),
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
+    const { response, html } = await fetchHtmlWithSafety(url);
 
     if (!response.ok) {
       return {
@@ -185,7 +287,13 @@ export async function extractStructuredRecipe(
       };
     }
 
-    const html = await response.text();
+    if (!html) {
+      return {
+        success: false,
+        error: "No HTML content found on page",
+      };
+    }
+
     const $ = cheerio.load(html);
 
     // Look for JSON-LD structured data

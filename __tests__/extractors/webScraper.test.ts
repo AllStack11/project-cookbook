@@ -1,3 +1,4 @@
+/** @jest-environment node */
 import { scrapeWebContent, extractStructuredRecipe } from '@/lib/extractors/webScraper';
 
 // Mock fetch

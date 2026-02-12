@@ -2,8 +2,10 @@ import { YoutubeTranscript } from "youtube-transcript";
 import { preprocessContent } from "./preprocessor";
 import { getRandomUserAgent } from "./userAgents";
 import { createLogger } from "@/lib/utils/logger";
+import { matchesDomain } from "@/lib/utils/domainMatcher";
 
 const logger = createLogger("Extractor:YouTube");
+const FETCH_TIMEOUT_MS = 10000;
 
 export interface YoutubeExtractResult {
   success: boolean;
@@ -15,6 +17,24 @@ export interface YoutubeExtractResult {
     source: "transcript" | "description" | "youtube-api" | "captions";
   };
   externalRecipeUrl?: string; // Detected recipe link to follow
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs: number = FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /**
@@ -59,7 +79,7 @@ function detectRecipeUrl(description: string): string | null {
       const hostname = urlObj.hostname.replace(/^www\./, "");
 
       // Check if it's a known recipe site
-      if (recipeHosts.some((host) => hostname.includes(host))) {
+      if (recipeHosts.some((host) => matchesDomain(hostname, host))) {
         logger.info("Detected known recipe site URL in description", {
           url: urlObj.href,
           hostname,
@@ -222,7 +242,7 @@ async function extractWithTimedText(
         const timedTextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}&fmt=${fmt}`;
 
         try {
-          const response = await fetch(timedTextUrl, {
+          const response = await fetchWithTimeout(timedTextUrl, {
             headers: {
               "User-Agent": getRandomUserAgent(),
               Accept: "*/*",
@@ -271,7 +291,7 @@ async function extractWithTimedText(
     // Try getting list of available tracks first
     const trackListUrl = `https://www.youtube.com/api/timedtext?type=list&v=${videoId}`;
     try {
-      const trackListResponse = await fetch(trackListUrl, {
+      const trackListResponse = await fetchWithTimeout(trackListUrl, {
         headers: {
           "User-Agent": getRandomUserAgent(),
         },
@@ -298,7 +318,7 @@ async function extractWithTimedText(
               const url = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}&name=${encodeURIComponent(name)}&fmt=${fmt}`;
 
               try {
-                const resp = await fetch(url, {
+                const resp = await fetchWithTimeout(url, {
                   headers: {
                     "User-Agent": getRandomUserAgent(),
                   },
@@ -419,11 +439,12 @@ function parseTimedTextResponse(content: string, format: string): string {
  */
 function decodeHTMLEntities(text: string): string {
   return text
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'")
     .replace(/&nbsp;/g, " ")
     .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
     .replace(/\\n/g, " ")
@@ -447,7 +468,7 @@ export async function extractYoutubeDescription(
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     logger.info("Fetching YouTube page for description", { videoId });
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: {
         "User-Agent": getRandomUserAgent(),
         "Accept-Language": "en-US,en;q=0.9",
@@ -565,7 +586,7 @@ async function extractWithYoutubeApi(
 
     const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`;
 
-    const response = await fetch(apiUrl);
+    const response = await fetchWithTimeout(apiUrl);
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(

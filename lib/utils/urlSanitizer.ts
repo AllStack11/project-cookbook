@@ -88,14 +88,17 @@ export async function validateUrlSafety(
   // Resolve hostname to IP and check
   try {
     const lookup = dns.promises.lookup;
-    const { address } = await lookup(parsed.hostname);
-    if (isPrivateIP(address)) {
+    const addresses = await lookup(parsed.hostname, { all: true, verbatim: true });
+    if (addresses.length === 0) {
+      return { safe: false, error: "URL hostname did not resolve to an address" };
+    }
+
+    if (addresses.some(({ address }) => isPrivateIP(address))) {
       return { safe: false, error: "URL resolves to a restricted address" };
     }
   } catch {
-    // DNS resolution failed - allow the request to proceed
-    // (the actual fetch will fail with a more specific error)
-    return { safe: true };
+    // Fail closed on DNS failures to reduce SSRF bypass risk in ambiguous cases
+    return { safe: false, error: "URL hostname could not be resolved safely" };
   }
 
   return { safe: true };

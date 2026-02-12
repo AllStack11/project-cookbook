@@ -4,12 +4,15 @@ import { scrapeInstagramContent } from "../../lib/extractors/instagramExtractor"
 jest.mock("puppeteer-core", () => ({
   launch: jest.fn().mockResolvedValue({
     newPage: jest.fn().mockResolvedValue({
+      setRequestInterception: jest.fn(),
+      on: jest.fn(),
       setViewport: jest.fn(),
       setUserAgent: jest.fn(),
       goto: jest.fn(),
+      waitForFunction: jest.fn().mockResolvedValue(undefined),
       waitForSelector: jest.fn(),
       evaluate: jest.fn().mockResolvedValue({
-        text: "Red lentils and Ingredients for a great recipe",
+        text: "Red lentils and Ingredients for a great recipe with multiple steps and enough context to parse the caption successfully.",
         title: "Instagram Post",
       }),
     }),

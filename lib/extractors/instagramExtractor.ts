@@ -8,6 +8,18 @@ const logger = createLogger("Extractor:Instagram");
 const BROWSER_LAUNCH_TIMEOUT = 15000;
 const OVERALL_EXTRACTION_TIMEOUT = 30000;
 
+function isRetryableInstagramError(errorMessage: string): boolean {
+  const lowered = errorMessage.toLowerCase();
+  return (
+    lowered.includes("timeout") ||
+    lowered.includes("net::") ||
+    lowered.includes("navigation") ||
+    lowered.includes("econnreset") ||
+    lowered.includes("etimedout") ||
+    lowered.includes("protocol error")
+  );
+}
+
 /**
  * Wraps getBrowserInternal with a timeout to prevent hanging on cold starts.
  */
@@ -123,14 +135,9 @@ async function getBrowserInternal() {
 async function performInstagramExtraction(url: string): Promise<WebScraperResult> {
   return Promise.race([
     performInstagramExtractionInternal(url),
-    new Promise<WebScraperResult>((resolve) =>
+    new Promise<WebScraperResult>((_, reject) =>
       setTimeout(
-        () =>
-          resolve({
-            success: false,
-            error:
-              "Instagram extraction timed out. This often happens on first request - try again in a few seconds.",
-          }),
+        () => reject(new Error("Instagram extraction timed out")),
         OVERALL_EXTRACTION_TIMEOUT
       )
     ),
@@ -395,6 +402,10 @@ async function performInstagramExtractionInternal(url: string): Promise<WebScrap
       userFriendlyError = "Unable to connect to Instagram. Please check the URL and try again.";
     }
 
+    if (isRetryableInstagramError(errorMessage)) {
+      throw new Error(userFriendlyError);
+    }
+
     return {
       success: false,
       error: userFriendlyError,
@@ -408,13 +419,25 @@ async function performInstagramExtractionInternal(url: string): Promise<WebScrap
 export async function scrapeInstagramContent(
   url: string
 ): Promise<WebScraperResult> {
-  return retryWithBackoff(
-    () => performInstagramExtraction(url),
-    {
-      maxRetries: 3,
-      initialDelayMs: 1000,
-      maxDelayMs: 8000,
-    },
-    'Instagram extraction'
-  );
+  try {
+    return await retryWithBackoff(
+      () => performInstagramExtraction(url),
+      {
+        maxRetries: 3,
+        initialDelayMs: 1000,
+        maxDelayMs: 8000,
+      },
+      "Instagram extraction"
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Instagram extraction failed after retries";
+
+    return {
+      success: false,
+      error: message,
+    };
+  }
 }

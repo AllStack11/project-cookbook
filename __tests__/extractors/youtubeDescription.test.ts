@@ -10,7 +10,7 @@ describe("youtubeExtractor Description Fallback", () => {
     const mockHtml = `
       <html>
         <body>
-          <script>var ytInitialData = {"contents":{"twoColumnWatchNextResults":{"results":{"results":{"contents":[{"videoPrimaryInfoRenderer":{"description":{"runs":[{"text":"Ingredients: Flour, Water, Yeast"}]}}}]}}}}};</script>
+          <script>var ytInitialData = {"contents":{"twoColumnWatchNextResults":{"results":{"results":{"contents":[{},{"videoSecondaryInfoRenderer":{"attributedDescription":{"content":"Ingredients: Flour, Water, Yeast. Mix everything and bake until golden brown for a complete recipe demo."}}}]}}}}};</script>
         </body>
       </html>
     `;
@@ -27,12 +27,12 @@ describe("youtubeExtractor Description Fallback", () => {
     expect(result.metadata?.source).toBe("description");
   });
 
-  it("should extract description from structured description (engagementPanels)", async () => {
+  it("should extract description from shortDescription", async () => {
     const videoId = "test_video_456";
     const mockHtml = `
       <html>
         <body>
-          <script>var ytInitialData = {"engagementPanels":[{"engagementPanelSectionListRenderer":{"targetId":"engagement-panel-structured-description","content":{"structuredDescriptionContentRenderer":{"items":[{"videoDescriptionHeaderRenderer":{"description":{"runs":[{"text":"Engaged Ingredients"}]}}}]}}}}]};</script>
+          <script>var ytInitialPlayerResponse = {"videoDetails":{"shortDescription":"Short description text with enough detail to pass threshold. Includes ingredients and steps for soup."}};</script>
         </body>
       </html>
     `;
@@ -45,17 +45,16 @@ describe("youtubeExtractor Description Fallback", () => {
     const result = await extractYoutubeDescription(videoId);
 
     expect(result.success).toBe(true);
-    expect(result.content).toContain("Engaged Ingredients");
+    expect(result.content).toContain("Short description text");
     expect(result.metadata?.source).toBe("description");
   });
 
-  it("should fallback to shortDescription", async () => {
+  it("should fail when no substantial description is present", async () => {
     const videoId = "test_video_789";
     const mockHtml = `
       <html>
         <body>
           <script>var someOtherVar = {};</script>
-          <script>var config = {"shortDescription":"Short description text"};</script>
         </body>
       </html>
     `;
@@ -67,8 +66,8 @@ describe("youtubeExtractor Description Fallback", () => {
 
     const result = await extractYoutubeDescription(videoId);
 
-    expect(result.success).toBe(true);
-    expect(result.content).toBe("Short description text");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Could not find substantial");
   });
 
   it("should handle invalid fetch response", async () => {

@@ -14,6 +14,19 @@ export interface ValidatedRequest {
   isSuspicious: boolean;
 }
 
+function extractClientIp(request: NextRequest): string {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
+  return "unknown";
+}
+
 /**
  * Validates the incoming request: parses body, checks rate limits, detects VPNs.
  * Returns either a ValidatedRequest or a NextResponse (error).
@@ -36,12 +49,28 @@ export async function validateAndAuthorizeRequest(
   }
 
   // Parse request body
-  const body = await request.json();
-  const { url, text } = body;
-  logger.debug("Request received", { hasUrl: !!url, hasText: !!text });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    logger.warn("Invalid JSON body received");
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Invalid JSON request body",
+        errorCode: ErrorCode.INVALID_INPUT,
+      },
+      { status: StatusCode.BAD_REQUEST }
+    );
+  }
+
+  const { url, text } = (body as { url?: unknown; text?: unknown }) || {};
+  const safeUrl = typeof url === "string" ? url : undefined;
+  const safeText = typeof text === "string" ? text : undefined;
+  logger.debug("Request received", { hasUrl: !!safeUrl, hasText: !!safeText });
 
   // Validate input
-  if (!url && !text) {
+  if (!safeUrl && !safeText) {
     logger.warn("Invalid input: neither URL nor text provided");
     return NextResponse.json(
       {
@@ -54,10 +83,7 @@ export async function validateAndAuthorizeRequest(
   }
 
   // Get IP for rate limiting
-  const ip =
-    request.headers.get("x-forwarded-for") ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
+  const ip = extractClientIp(request);
   logger.debug("Client IP", { ip });
 
   // VPN/Suspicious IP Check
@@ -99,8 +125,8 @@ export async function validateAndAuthorizeRequest(
   }
 
   // Content sanitization for text input
-  if (text) {
-    const contentCheck = validateInputContent(text);
+  if (safeText) {
+    const contentCheck = validateInputContent(safeText);
     if (!contentCheck.isSafe) {
       logger.warn("Unsafe text content blocked", {
         reason: contentCheck.reason,
@@ -116,5 +142,5 @@ export async function validateAndAuthorizeRequest(
     }
   }
 
-  return { url, text, ip, isSuspicious };
+  return { url: safeUrl, text: safeText, ip, isSuspicious };
 }
