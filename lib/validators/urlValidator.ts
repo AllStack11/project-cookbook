@@ -8,9 +8,10 @@ export interface UrlValidationResult {
   error?: string;
 }
 
-const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
 const YOUTUBE_ID_REGEX =
-  /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  /(?:(?:youtube(?:-nocookie)?\.com)\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+
+const YOUTUBE_DOMAINS = ["youtube.com", "youtu.be", "youtube-nocookie.com"];
 
 const SOCIAL_MEDIA_PLATFORMS = {
   INSTAGRAM: ["instagram.com"],
@@ -48,6 +49,10 @@ function matchesAnyDomain(hostname: string, domains: string[]): boolean {
   return domains.some((domain) => matchesDomain(hostname, domain));
 }
 
+function isYouTubeHostname(hostname: string): boolean {
+  return matchesAnyDomain(hostname, YOUTUBE_DOMAINS);
+}
+
 export function validateUrl(url: string): UrlValidationResult {
   if (!url || url.trim().length === 0) {
     return {
@@ -75,7 +80,7 @@ export function validateUrl(url: string): UrlValidationResult {
   }
 
   // Detect YouTube
-  if (YOUTUBE_REGEX.test(url)) {
+  if (isYouTubeHostname(parsedUrl.hostname.toLowerCase())) {
     const videoId = extractYoutubeVideoId(url);
     if (!videoId) {
       return {
@@ -166,7 +171,12 @@ export function extractYoutubeVideoId(url: string): string | null {
 }
 
 export function isYoutubeUrl(url: string): boolean {
-  return YOUTUBE_REGEX.test(url);
+  try {
+    const parsedUrl = new URL(url);
+    return isYouTubeHostname(parsedUrl.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
 }
 
 export function isSocialMediaUrl(url: string): boolean {

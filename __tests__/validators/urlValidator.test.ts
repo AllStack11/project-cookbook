@@ -36,6 +36,22 @@ describe("urlValidator", () => {
       expect(result.videoId).toBe("AdrDNhsh9Iw");
     });
 
+    it("should validate mobile YouTube URL", () => {
+      const result = validateUrl("https://m.youtube.com/watch?v=dQw4w9WgXcQ");
+      expect(result.isValid).toBe(true);
+      expect(result.sourceType).toBe(SourceType.YOUTUBE);
+      expect(result.videoId).toBe("dQw4w9WgXcQ");
+    });
+
+    it("should validate youtube-nocookie embed URL", () => {
+      const result = validateUrl(
+        "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+      );
+      expect(result.isValid).toBe(true);
+      expect(result.sourceType).toBe(SourceType.YOUTUBE);
+      expect(result.videoId).toBe("dQw4w9WgXcQ");
+    });
+
     it("should validate Instagram URL as social media", () => {
       const result = validateUrl("https://www.instagram.com/p/ABC123/");
       expect(result.isValid).toBe(true);
@@ -124,6 +140,13 @@ describe("urlValidator", () => {
       expect(id).toBe("AdrDNhsh9Iw");
     });
 
+    it("should extract video ID from mobile YouTube URL", () => {
+      const id = extractYoutubeVideoId(
+        "https://m.youtube.com/watch?v=dQw4w9WgXcQ"
+      );
+      expect(id).toBe("dQw4w9WgXcQ");
+    });
+
     it("should return null for non-YouTube URL", () => {
       const id = extractYoutubeVideoId("https://example.com/video");
       expect(id).toBeNull();
@@ -136,6 +159,12 @@ describe("urlValidator", () => {
         true
       );
       expect(isYoutubeUrl("https://youtu.be/dQw4w9WgXcQ")).toBe(true);
+      expect(isYoutubeUrl("https://m.youtube.com/watch?v=dQw4w9WgXcQ")).toBe(
+        true
+      );
+      expect(
+        isYoutubeUrl("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ")
+      ).toBe(true);
     });
 
     it("should return false for non-YouTube URLs", () => {

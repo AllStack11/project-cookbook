@@ -40,6 +40,10 @@ jest.mock("@/lib/validators/contentValidator", () => ({
   validateInputContent: jest.fn(),
 }));
 
+jest.mock("@/lib/utils/urlResolver", () => ({
+  resolveSearchEngineUrl: jest.fn(),
+}));
+
 jest.mock("@/lib/utils/logger", () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(),
@@ -68,6 +72,7 @@ import { getCachedRecipe, setCachedRecipe } from "@/lib/cache/cacheClient";
 import { saveRecipeToLongTermStorage } from "@/lib/db";
 import { incrementRateLimit } from "@/lib/utils/rateLimiter";
 import { validateInputContent } from "@/lib/validators/contentValidator";
+import { resolveSearchEngineUrl } from "@/lib/utils/urlResolver";
 
 const mockValidateUrl = validateUrl as jest.MockedFunction<typeof validateUrl>;
 const mockIsLikelyRecipeUrl = isLikelyRecipeUrl as jest.MockedFunction<
@@ -101,6 +106,8 @@ const mockIncrementRateLimit = incrementRateLimit as jest.MockedFunction<
 >;
 const mockValidateInputContent =
   validateInputContent as jest.MockedFunction<typeof validateInputContent>;
+const mockResolveSearchEngineUrl =
+  resolveSearchEngineUrl as jest.MockedFunction<typeof resolveSearchEngineUrl>;
 
 describe("extractContent", () => {
   const request = {
@@ -123,6 +130,12 @@ describe("extractContent", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockResolveSearchEngineUrl.mockImplementation(async (inputUrl: string) => ({
+      originalUrl: inputUrl,
+      resolvedUrl: inputUrl,
+      wasSearchEngine: false,
+      wasResolved: false,
+    }));
     mockValidateUrl.mockReturnValue({
       isValid: true,
       sourceType: SourceType.BLOG,
@@ -140,6 +153,13 @@ describe("extractContent", () => {
   });
 
   it("returns bad request when URL validation fails", async () => {
+    mockResolveSearchEngineUrl.mockResolvedValue({
+      originalUrl: "not-a-url",
+      resolvedUrl: "not-a-url",
+      wasSearchEngine: false,
+      wasResolved: false,
+    });
+
     mockValidateUrl.mockReturnValue({
       isValid: false,
       error: "Invalid URL",
@@ -160,6 +180,35 @@ describe("extractContent", () => {
       success: false,
       errorCode: ErrorCode.INVALID_URL,
     });
+  });
+
+  it("returns bad request for unresolved search engine wrapper URLs", async () => {
+    const bingUrl =
+      "https://www.bing.com/videos/riverview/relatedvideo?q=recipes&&mid=D60929DFF38B451D38E3D60929DFF38B451D38E3&FORM=VRDGAR";
+
+    mockResolveSearchEngineUrl.mockResolvedValue({
+      originalUrl: bingUrl,
+      resolvedUrl: bingUrl,
+      wasSearchEngine: true,
+      wasResolved: false,
+    });
+
+    const result = await extractContentFromUrl(
+      bingUrl,
+      "1.1.1.1",
+      false,
+      Date.now(),
+      request
+    );
+
+    expect("response" in result).toBe(true);
+    const response = (result as any).response as NextResponse;
+    expect(response.status).toBe(StatusCode.BAD_REQUEST);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      errorCode: ErrorCode.INVALID_URL,
+    });
+    expect(mockValidateUrl).not.toHaveBeenCalled();
   });
 
   it("returns cached recipe immediately on cache hit", async () => {
@@ -218,7 +267,7 @@ describe("extractContent", () => {
     });
   });
 
-  it("uses structured-data bypass for high-quality external recipe URL", async () => {
+  it("uses external recipe URL content for LLM when structured data is present", async () => {
     mockValidateUrl.mockReturnValue({
       isValid: true,
       sourceType: SourceType.YOUTUBE,
@@ -247,19 +296,49 @@ describe("extractContent", () => {
       request
     );
 
-    expect("response" in result).toBe(true);
-    const payload = await (result as any).response.json();
+    expect("response" in result).toBe(false);
+    expect(result).toMatchObject({
+      content: "content",
+      sourceType: SourceType.BLOG,
+      sourceUrl: "https://youtu.be/abc123",
+    });
 
-    expect(payload.success).toBe(true);
-    expect(payload.metadata.modelUsed).toBe("structured-data-bypass");
-    expect(payload.metadata.externalRecipeUrl).toBe("https://example.com/soup");
+    expect(mockSetCachedRecipe).not.toHaveBeenCalled();
+    expect(mockSaveRecipeToLongTermStorage).not.toHaveBeenCalled();
+    expect(mockIncrementRateLimit).not.toHaveBeenCalled();
+  });
 
-    expect(mockSetCachedRecipe).toHaveBeenCalledWith(
-      "https://youtu.be/abc123",
-      expect.any(Object)
+  it("does not bypass LLM for blog structured data", async () => {
+    mockValidateUrl.mockReturnValue({
+      isValid: true,
+      sourceType: SourceType.BLOG,
+    } as any);
+
+    mockExtractStructuredRecipe.mockResolvedValue({
+      success: true,
+      recipe: structuredRecipe,
+      content: "structured blog recipe content",
+      metadata: { hasRecipeSignals: true, title: "Soup" },
+    } as any);
+
+    const result = await extractContentFromUrl(
+      "https://example.com/blog-recipe",
+      "1.1.1.1",
+      false,
+      Date.now(),
+      request
     );
-    expect(mockSaveRecipeToLongTermStorage).toHaveBeenCalledTimes(1);
-    expect(mockIncrementRateLimit).toHaveBeenCalledWith("1.1.1.1");
+
+    expect("response" in result).toBe(false);
+    expect(result).toMatchObject({
+      content: "structured blog recipe content",
+      sourceType: SourceType.BLOG,
+      sourceUrl: "https://example.com/blog-recipe",
+    });
+
+    expect(mockSetCachedRecipe).not.toHaveBeenCalled();
+    expect(mockSaveRecipeToLongTermStorage).not.toHaveBeenCalled();
+    expect(mockIncrementRateLimit).not.toHaveBeenCalled();
   });
 
   it("returns extraction failed when web scraping fails", async () => {

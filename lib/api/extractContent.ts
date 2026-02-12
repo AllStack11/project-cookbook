@@ -5,20 +5,15 @@ import {
   isLikelyRecipeUrl,
 } from "@/lib/validators/urlValidator";
 import {
-  validateRecipe,
-  calculateConfidenceScore,
-} from "@/lib/validators/recipeValidator";
-import {
   extractYoutubeTranscript,
   extractYoutubeDescription,
 } from "@/lib/extractors/youtubeExtractor";
 import { extractStructuredRecipe } from "@/lib/extractors/webScraper";
-import { getCachedRecipe, setCachedRecipe } from "@/lib/cache/cacheClient";
-import { saveRecipeToLongTermStorage } from "@/lib/db";
-import { incrementRateLimit } from "@/lib/utils/rateLimiter";
+import { getCachedRecipe } from "@/lib/cache/cacheClient";
 import { validateInputContent } from "@/lib/validators/contentValidator";
+import { resolveSearchEngineUrl } from "@/lib/utils/urlResolver";
 import { ErrorCode, StatusCode } from "@/types/api";
-import { SourceType, Recipe } from "@/types/recipe";
+import { SourceType } from "@/types/recipe";
 import { createLogger } from "@/lib/utils/logger";
 
 const logger = createLogger("API:ExtractContent");
@@ -36,7 +31,7 @@ export interface EarlyReturn {
 
 /**
  * Handles URL validation, caching, and content extraction.
- * May return early with a cached recipe or structured-data bypass response.
+ * May return early with a cached recipe response.
  */
 export async function extractContentFromUrl(
   url: string,
@@ -47,9 +42,37 @@ export async function extractContentFromUrl(
 ): Promise<ExtractionResult | EarlyReturn> {
   logger.info("Processing URL input", { url: url.substring(0, 100) });
 
+  // Resolve search engine wrapper URLs (e.g. Bing/Google redirect links)
+  const resolutionStart = Date.now();
+  const resolvedUrlResult = await resolveSearchEngineUrl(url);
+  logger.perf("URL resolution", Date.now() - resolutionStart);
+
+  const effectiveUrl = resolvedUrlResult.resolvedUrl;
+  if (resolvedUrlResult.wasResolved) {
+    logger.info("Resolved search engine URL", {
+      from: url.substring(0, 100),
+      to: effectiveUrl.substring(0, 100),
+      method: resolvedUrlResult.resolutionMethod,
+    });
+  }
+
+  if (resolvedUrlResult.wasSearchEngine && !resolvedUrlResult.wasResolved) {
+    return {
+      response: NextResponse.json(
+        {
+          success: false,
+          error:
+            "Search-engine result URLs are not directly supported. Open the result and copy the final page URL (YouTube/watch page, blog post, etc.).",
+          errorCode: ErrorCode.INVALID_URL,
+        },
+        { status: StatusCode.BAD_REQUEST }
+      ),
+    };
+  }
+
   // Validate URL
   const urlValidationStart = Date.now();
-  const urlValidation = validateUrl(url);
+  const urlValidation = validateUrl(effectiveUrl);
   logger.perf("URL validation", Date.now() - urlValidationStart);
 
   if (!urlValidation.isValid) {
@@ -73,7 +96,7 @@ export async function extractContentFromUrl(
   });
 
   // Early URL pre-detection (soft check)
-  const likelyRecipe = isLikelyRecipeUrl(url);
+  const likelyRecipe = isLikelyRecipeUrl(effectiveUrl);
   if (!likelyRecipe && sourceType === SourceType.BLOG) {
     logger.info(
       "URL path does not strongly suggest a recipe, will perform deeper signal check after scraping"
@@ -82,7 +105,7 @@ export async function extractContentFromUrl(
 
   // Check cache (after URL validation)
   const cacheCheckStart = Date.now();
-  const cachedRecipe = await getCachedRecipe(url);
+  const cachedRecipe = await getCachedRecipe(effectiveUrl);
   logger.perf("Cache check", Date.now() - cacheCheckStart);
 
   if (cachedRecipe) {
@@ -113,7 +136,7 @@ export async function extractContentFromUrl(
   // Extract content based on source type
   if (sourceType === SourceType.YOUTUBE) {
     const result = await extractYoutubeContent(
-      url,
+      effectiveUrl,
       urlValidation.videoId!,
       ip,
       isSuspicious,
@@ -125,7 +148,7 @@ export async function extractContentFromUrl(
     sourceType = result.sourceType;
   } else {
     const result = await extractWebContent(
-      url,
+      effectiveUrl,
       sourceType,
       ip,
       isSuspicious,
@@ -137,16 +160,16 @@ export async function extractContentFromUrl(
     sourceType = result.sourceType;
   }
 
-  return { content, sourceType, sourceUrl: url };
+  return { content, sourceType, sourceUrl: effectiveUrl };
 }
 
 async function extractYoutubeContent(
   url: string,
   videoId: string,
-  ip: string,
-  isSuspicious: boolean,
-  overallStart: number,
-  request: NextRequest
+  _ip: string,
+  _isSuspicious: boolean,
+  _overallStart: number,
+  _request: NextRequest
 ): Promise<ExtractionResult | EarlyReturn> {
   logger.info("Extracting YouTube transcript", { videoId });
   const extractStart = Date.now();
@@ -197,20 +220,6 @@ async function extractYoutubeContent(
     const webResult = await extractStructuredRecipe(result.externalRecipeUrl);
     logger.perf("External recipe URL extraction", Date.now() - webStart);
 
-    if (webResult.success && webResult.recipe) {
-      const earlyReturn = await tryStructuredDataBypass(
-        webResult.recipe,
-        url,
-        SourceType.YOUTUBE,
-        ip,
-        isSuspicious,
-        overallStart,
-        request,
-        { externalRecipeUrl: result.externalRecipeUrl }
-      );
-      if (earlyReturn) return earlyReturn;
-    }
-
     if (webResult.success && webResult.content) {
       logger.info("Using external recipe URL content for LLM extraction");
       content = webResult.content;
@@ -257,10 +266,10 @@ async function extractYoutubeContent(
 async function extractWebContent(
   url: string,
   sourceType: SourceType,
-  ip: string,
-  isSuspicious: boolean,
-  overallStart: number,
-  request: NextRequest
+  _ip: string,
+  _isSuspicious: boolean,
+  _overallStart: number,
+  _request: NextRequest
 ): Promise<ExtractionResult | EarlyReturn> {
   logger.info("Extracting web content");
   const scrapeStart = Date.now();
@@ -269,21 +278,8 @@ async function extractWebContent(
   const result = await extractStructuredRecipe(url);
   logger.perf("Web extraction", Date.now() - scrapeStart);
 
-  // Try structured data bypass
   if (result.success && result.recipe) {
-    const earlyReturn = await tryStructuredDataBypass(
-      result.recipe,
-      url,
-      sourceType,
-      ip,
-      isSuspicious,
-      overallStart,
-      request
-    );
-    if (earlyReturn) return earlyReturn;
-    logger.info(
-      "Structured data incomplete or sparse, proceeding to LLM for better quality"
-    );
+    logger.info("Structured data found, continuing to LLM extraction path");
   }
 
   if (!result.success) {
@@ -350,66 +346,4 @@ async function extractWebContent(
   }
 
   return { content, sourceType, sourceUrl: url };
-}
-
-/**
- * Attempts to bypass LLM by using high-quality structured data.
- * Returns an EarlyReturn if the bypass succeeds, null otherwise.
- */
-async function tryStructuredDataBypass(
-  recipe: Recipe,
-  url: string,
-  sourceType: SourceType,
-  ip: string,
-  isSuspicious: boolean,
-  overallStart: number,
-  request: NextRequest,
-  extraMetadata?: Record<string, unknown>
-): Promise<EarlyReturn | null> {
-  const validation = validateRecipe(recipe);
-  const hasEnoughIngredients = recipe.ingredients.length >= 3;
-  const hasEnoughInstructions = recipe.instructions.length >= 3;
-
-  if (
-    validation.isValid &&
-    hasEnoughIngredients &&
-    hasEnoughInstructions
-  ) {
-    logger.info("LLM BYPASS - Using high-quality structured data");
-
-    recipe.confidenceScore = calculateConfidenceScore(recipe);
-    recipe.sourcePlatform = sourceType;
-    recipe.sourceUrl = url;
-
-    await setCachedRecipe(url, recipe);
-    await saveRecipeToLongTermStorage(
-      recipe,
-      {
-        ipAddress: ip,
-        userAgent: request.headers.get("user-agent") || undefined,
-        country:
-          request.headers.get("x-vercel-ip-country") || undefined,
-        region:
-          request.headers.get("x-vercel-ip-country-region") || undefined,
-        isSuspicious,
-      },
-      url
-    );
-    await incrementRateLimit(ip);
-
-    return {
-      response: NextResponse.json({
-        success: true,
-        recipe,
-        metadata: {
-          cacheHit: false,
-          modelUsed: "structured-data-bypass",
-          processingTime: Date.now() - overallStart,
-          ...extraMetadata,
-        },
-      }),
-    };
-  }
-
-  return null;
 }

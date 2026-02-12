@@ -100,12 +100,40 @@ async function fetchHtmlWithSafety(url: string): Promise<{ response: Response; h
       throw new Error(safetyCheck.error || "URL blocked for security reasons");
     }
 
-    const response = await fetchWithTimeout(currentUrl, {
-      headers: {
-        "User-Agent": getRandomUserAgent(),
+    // Some sites terminate connections when they dislike specific headers.
+    // Try a conservative browser-like profile first, then a randomized UA fallback.
+    const headerProfiles: HeadersInit[] = [
+      {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
       },
-      redirect: "manual",
-    });
+      {
+        "User-Agent": getRandomUserAgent(),
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    ];
+
+    let response: Response | null = null;
+    let lastFetchError: unknown = null;
+
+    for (const headers of headerProfiles) {
+      try {
+        response = await fetchWithTimeout(currentUrl, {
+          headers,
+          redirect: "manual",
+        });
+        break;
+      } catch (error) {
+        lastFetchError = error;
+      }
+    }
+
+    if (!response) {
+      throw lastFetchError instanceof Error
+        ? lastFetchError
+        : new Error("Network request failed");
+    }
 
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers?.get?.("location");
