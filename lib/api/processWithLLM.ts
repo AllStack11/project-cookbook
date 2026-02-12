@@ -4,19 +4,26 @@ import {
   validateRecipe,
   calculateConfidenceScore,
 } from "@/lib/validators/recipeValidator";
-import { extractRecipeWithGemini } from "@/lib/llm/geminiClient";
+import { extractRecipe } from "@/lib/llm/provider";
+import type { LLMExtractionResponse } from "@/lib/llm/provider";
 import { parseRecipeFromLLMResponse } from "@/lib/llm/responseParser";
 import {
   buildRecipeExtractionPrompt,
   buildFallbackPrompt,
 } from "@/lib/llm/promptBuilder";
-import { selectModel } from "@/lib/llm/modelSelector";
+import { selectModelCandidates } from "@/lib/llm/modelSelector";
+import type { ModelAttemptType } from "@/lib/llm/modelSelector";
 import { setCachedRecipe } from "@/lib/cache/cacheClient";
 import { saveRecipeToLongTermStorage } from "@/lib/db";
 import { incrementRateLimit, getRequestCount } from "@/lib/utils/rateLimiter";
 import { ErrorCode, StatusCode } from "@/types/api";
 import { SourceType, Recipe } from "@/types/recipe";
 import { createLogger } from "@/lib/utils/logger";
+import {
+  canAffordEstimatedCall,
+  recordActualSpend,
+} from "@/lib/llm/budgetGuard";
+import { LLMProviderError, classifyLLMError } from "@/lib/llm/errors";
 
 const logger = createLogger("API:ProcessLLM");
 
@@ -32,66 +39,216 @@ export async function processContentWithLLM(
   request: NextRequest,
   isSuspicious: boolean
 ): Promise<NextResponse> {
-  // Get request count for model selection
   const requestCount = await getRequestCount(ip);
 
-  // Select model
-  const model = selectModel({
+  const attempts = selectModelCandidates({
     contentLength: content.length,
     sourceType,
     requestCount,
   });
-  logger.info("Model selected", {
-    model,
+  logger.info("Model candidates selected", {
+    attempts,
     contentLength: content.length,
     requestCount,
   });
 
-  // Build prompt
   const prompt = buildRecipeExtractionPrompt(content, sourceType);
   logger.debug("Prompt built", {
     promptLength: prompt.length,
     estimatedInputTokens: Math.ceil(prompt.length / 4),
   });
 
-  // Call LLM
-  logger.info("Calling Gemini API...", { model });
   const llmStart = Date.now();
-  let llmResponse;
+  let llmResponse: LLMExtractionResponse | undefined;
+  let modelUsed = "";
+  let providerUsed = "";
+  let modelTierUsed: ModelAttemptType = "free_primary";
+  let freeAttemptFailedReason: string | undefined;
+  let allowPaidFallback = false;
+  const modelErrors: Array<{
+    attemptType: ModelAttemptType;
+    model: string;
+    reason: string;
+    errorCode?: string;
+    errorClass?: string;
+    statusCode?: number;
+    escalatedToPaid: boolean;
+  }> = [];
+
   try {
-    llmResponse = await extractRecipeWithGemini(content, prompt, model);
+    for (const attempt of attempts) {
+      const { model, attemptType } = attempt;
+
+      if (attemptType === "paid_fallback" && !allowPaidFallback) {
+        logger.info(
+          "Skipping paid fallback; free attempt did not fail with provider/runtime error",
+          {
+            attemptType,
+            model,
+          }
+        );
+        modelErrors.push({
+          attemptType,
+          model,
+          reason: "paid_fallback_not_permitted",
+          escalatedToPaid: false,
+        });
+        continue;
+      }
+
+      const budget = await canAffordEstimatedCall(model, prompt.length);
+      if (!budget.allowed) {
+        logger.warn("Skipping model due to monthly budget cap", {
+          model,
+          attemptType,
+          currentSpendUsd: budget.currentSpendUsd,
+          estimatedCallCostUsd: budget.estimatedCallCostUsd,
+          capUsd: budget.capUsd,
+        });
+        modelErrors.push({
+          attemptType,
+          model,
+          reason: "budget_cap_reached",
+          escalatedToPaid: false,
+        });
+        continue;
+      }
+
+      logger.info("Calling LLM model...", { model, attemptType });
+      try {
+        llmResponse = await extractRecipe(content, prompt, model, {
+          attemptType,
+          providerRouting: attempt.providerRouting,
+        });
+        modelUsed = llmResponse.model || model;
+        providerUsed = llmResponse.provider;
+        modelTierUsed = attemptType;
+        break;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        const errorCode =
+          error instanceof LLMProviderError ? error.code : undefined;
+        const statusCode =
+          error instanceof LLMProviderError ? error.statusCode : undefined;
+        const errorClass = classifyLLMError(error);
+        const escalatedToPaid =
+          attemptType !== "paid_fallback" && errorClass === "provider_runtime";
+
+        if (escalatedToPaid) {
+          allowPaidFallback = true;
+          freeAttemptFailedReason = errorCode || "provider_runtime";
+        }
+
+        modelErrors.push({
+          attemptType,
+          model,
+          reason,
+          errorCode,
+          errorClass,
+          statusCode,
+          escalatedToPaid,
+        });
+        logger.warn("Model attempt failed, trying next candidate", {
+          model,
+          attemptType,
+          reason,
+          errorCode,
+          errorClass,
+          statusCode,
+          escalatedToPaid,
+        });
+      }
+    }
+
+    if (!llmResponse) {
+      throw new Error("No model candidates succeeded");
+    }
+
     const llmDuration = Date.now() - llmStart;
-    logger.perf("Gemini API call", llmDuration);
+    logger.perf("LLM provider call", llmDuration);
     logger.info("LLM response received", {
       tokensUsed: llmResponse.tokensUsed,
       responseLength: llmResponse.content.length,
       duration: llmDuration,
+      modelUsed,
+      providerUsed,
+      modelTierUsed,
+      freeAttemptFailedReason,
     });
+
+    await recordActualSpend(modelUsed, prompt.length, llmResponse.tokensUsed);
 
     logger.cost("LLM extraction completed", {
       tokensUsed: llmResponse.tokensUsed,
-      modelUsed: model,
+      modelUsed,
       cacheHit: false,
     });
   } catch (error) {
-    logger.error("Gemini API call failed", {
+    logger.error("All LLM model attempts failed", {
       error,
       duration: Date.now() - llmStart,
+      attempts: modelErrors,
     });
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to process recipe with AI",
+        error:
+          "AI extraction is temporarily unavailable right now. Please try again shortly.",
         errorCode: ErrorCode.INTERNAL_ERROR,
       },
-      { status: StatusCode.INTERNAL_SERVER_ERROR }
+      { status: StatusCode.SERVICE_UNAVAILABLE }
     );
   }
 
-  // Parse response
-  const parseResult = parseRecipeFromLLMResponse(llmResponse.content);
+  let parseResult = parseRecipeFromLLMResponse(llmResponse.content);
 
-  // Handle no recipe found
+  if (
+    !parseResult.success &&
+    (parseResult.validationError || parseResult.parseError) &&
+    !parseResult.noRecipeFound
+  ) {
+    logger.warn(
+      "Initial LLM response failed parse/validation, attempting self-correction...",
+      {
+        validationError: parseResult.validationError,
+        parseError: parseResult.parseError,
+        error: parseResult.error,
+      }
+    );
+
+    const correctionReason = parseResult.validationError || parseResult.error || "Invalid JSON";
+    const correctionPrompt = `The previous JSON response was invalid according to the expected format.
+Errors:
+${correctionReason}
+
+Please fix the JSON and return only the valid JSON object.
+Previous Response:
+${llmResponse.content}`;
+
+    try {
+      const correctionLLMResponse = await extractRecipe(
+        content,
+        correctionPrompt,
+        modelUsed
+      );
+      const correctedParseResult = parseRecipeFromLLMResponse(
+        correctionLLMResponse.content
+      );
+
+      if (correctedParseResult.success) {
+        logger.info("Self-correction successful!");
+        parseResult = correctedParseResult;
+        llmResponse.tokensUsed += correctionLLMResponse.tokensUsed;
+      } else {
+        logger.warn("Self-correction attempt also failed validation", {
+          error: correctedParseResult.validationError,
+        });
+      }
+    } catch (correctionError) {
+      logger.error("Self-correction call failed", { error: correctionError });
+    }
+  }
+
   if (parseResult.noRecipeFound) {
     logger.info("LLM explicitly indicated no recipe found", {
       reason: parseResult.noRecipeReason,
@@ -99,8 +256,7 @@ export async function processContentWithLLM(
     return NextResponse.json(
       {
         success: false,
-        error:
-          parseResult.noRecipeReason || "No recipe found in the content",
+        error: parseResult.noRecipeReason || "No recipe found in the content",
         errorCode: ErrorCode.NO_RECIPE_FOUND,
       },
       { status: StatusCode.BAD_REQUEST }
@@ -108,14 +264,16 @@ export async function processContentWithLLM(
   }
 
   if (!parseResult.success) {
-    logger.error("Failed to parse LLM response", {
+    logger.error("Failed to parse LLM response after all attempts", {
       error: parseResult.error,
+      validationError: parseResult.validationError,
     });
     return NextResponse.json(
       {
         success: false,
         error: "Failed to parse recipe from AI response",
         errorCode: ErrorCode.VALIDATION_FAILED,
+        details: parseResult.validationError,
       },
       { status: StatusCode.INTERNAL_SERVER_ERROR }
     );
@@ -128,15 +286,13 @@ export async function processContentWithLLM(
     instructionsCount: recipe.instructions.length,
   });
 
-  // Validate recipe
   const validation = validateRecipe(recipe);
 
-  // Fallback system
   if (!validation.isValid) {
     const fallbackResult = await attemptFallback(
       recipe,
       content,
-      model,
+      modelUsed,
       validation
     );
     if (fallbackResult instanceof NextResponse) return fallbackResult;
@@ -145,41 +301,37 @@ export async function processContentWithLLM(
 
   logger.info("Recipe validation passed");
 
-  // Calculate confidence score
   recipe.confidenceScore = calculateConfidenceScore(recipe);
   recipe.sourcePlatform = sourceType;
   if (sourceUrl) {
     recipe.sourceUrl = sourceUrl;
   }
 
-  // Cache the result if from URL
   if (sourceUrl) {
     await setCachedRecipe(sourceUrl, recipe);
     logger.debug("Recipe cached", { url: sourceUrl.substring(0, 100) });
   }
 
-  // Save to long-term storage
   await saveRecipeToLongTermStorage(
     recipe,
     {
       ipAddress: ip,
       userAgent: request.headers.get("user-agent") || undefined,
       country: request.headers.get("x-vercel-ip-country") || undefined,
-      region:
-        request.headers.get("x-vercel-ip-country-region") || undefined,
+      region: request.headers.get("x-vercel-ip-country-region") || undefined,
       isSuspicious,
     },
     sourceUrl || undefined
   );
 
-  // Increment rate limit
   await incrementRateLimit(ip);
 
   const totalDuration = Date.now() - overallStart;
   logger.info("Extraction complete", {
     success: true,
     totalDuration,
-    model,
+    model: modelUsed,
+    provider: providerUsed,
   });
   logger.perf("TOTAL extraction time", totalDuration);
 
@@ -188,17 +340,18 @@ export async function processContentWithLLM(
     recipe,
     metadata: {
       cacheHit: false,
-      modelUsed: model,
+      modelUsed,
+      providerUsed,
       tokensUsed: llmResponse.tokensUsed,
       processingTime: totalDuration,
       isFallback: recipe.isGenerated || recipe.isPartialFallback,
+      fallbackTierUsed:
+        modelTierUsed === "paid_fallback" ? "paid_fallback" : "free_only",
+      freeAttemptFailedReason,
     },
   });
 }
 
-/**
- * Attempts a fallback LLM call when initial validation fails.
- */
 async function attemptFallback(
   recipe: Recipe,
   content: string,
@@ -221,13 +374,9 @@ async function attemptFallback(
     missingFields
   );
 
-  logger.info("Calling fallback Gemini generation...");
+  logger.info("Calling fallback LLM generation...");
   try {
-    const fallbackResponse = await extractRecipeWithGemini(
-      content,
-      fallbackPrompt,
-      model
-    );
+    const fallbackResponse = await extractRecipe(content, fallbackPrompt, model);
 
     const fallbackParseResult = parseRecipeFromLLMResponse(
       fallbackResponse.content
@@ -238,9 +387,8 @@ async function attemptFallback(
       fallbackRecipe.fallbackFields = missingFields;
       logger.info("Fallback recipe generated successfully");
       return fallbackRecipe;
-    } else {
-      throw new Error("Fallback parsing failed");
     }
+    throw new Error("Fallback parsing failed");
   } catch (fallbackError) {
     logger.error("Fallback generation failed", fallbackError);
     return NextResponse.json(

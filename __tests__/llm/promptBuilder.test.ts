@@ -27,7 +27,7 @@ describe("promptBuilder", () => {
       ["title"]
     );
 
-    expect(prompt).toContain("Generate a complete, high-quality recipe");
+    expect(prompt).toContain("Generate a complete, useful recipe");
     expect(prompt).toContain("isGenerated");
   });
 

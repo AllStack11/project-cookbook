@@ -6,7 +6,7 @@ import path from "path";
 import { loadEnvConfig } from "@next/env";
 import { extractContentFromUrl } from "@/lib/api/extractContent";
 import { buildRecipeExtractionPrompt } from "@/lib/llm/promptBuilder";
-import { extractRecipeWithGemini } from "@/lib/llm/geminiClient";
+import { extractRecipe } from "@/lib/llm/provider";
 import { parseRecipeFromLLMResponse } from "@/lib/llm/responseParser";
 import { SourceType } from "@/types/recipe";
 import {
@@ -128,9 +128,11 @@ loadEnvConfig(process.cwd());
 // Explicitly load .env.local for this integration suite in test mode.
 loadDotEnvLocalForTest();
 
-const runSuite = isTruthy(process.env.RUN_LLM_URL_SUITE) && !!process.env.GEMINI_API_KEY;
+const runSuite =
+  isTruthy(process.env.RUN_LLM_URL_SUITE) && !!process.env.OPENROUTER_API_KEY;
 const itIfEnabled = runSuite ? it : it.skip;
-const model = process.env.LLM_URL_SUITE_MODEL || "gemini-3-flash-preview";
+const model =
+  process.env.LLM_URL_SUITE_MODEL || "google/gemma-3-27b-it:free";
 const delayMs = parsePositiveInt(process.env.LLM_URL_SUITE_DELAY_MS, 750);
 const saveFullContent = process.env.LLM_URL_SUITE_SAVE_FULL_CONTENT === "true";
 const enabledCases = urlExtractionCases.filter((c) => c.enabled !== false);
@@ -139,7 +141,7 @@ if (!runSuite) {
   // Visible guidance when the suite is skipped.
   // eslint-disable-next-line no-console
   console.warn(
-    `[llm-url-suite] Skipping. RUN_LLM_URL_SUITE="${process.env.RUN_LLM_URL_SUITE || ""}" GEMINI_API_KEY present=${Boolean(process.env.GEMINI_API_KEY)}.`
+    `[llm-url-suite] Skipping. RUN_LLM_URL_SUITE="${process.env.RUN_LLM_URL_SUITE || ""}" OPENROUTER_API_KEY present=${Boolean(process.env.OPENROUTER_API_KEY)}.`
   );
 }
 
@@ -177,7 +179,7 @@ describe("url extraction prompt capture integration", () => {
         caseCount: enabledCases.length,
         env: {
           runFlag: process.env.RUN_LLM_URL_SUITE,
-          hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
+          hasOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY),
           modelEnv: process.env.LLM_URL_SUITE_MODEL || null,
           delayEnv: process.env.LLM_URL_SUITE_DELAY_MS || null,
           saveFullContentEnv: process.env.LLM_URL_SUITE_SAVE_FULL_CONTENT || null,
@@ -265,7 +267,7 @@ describe("url extraction prompt capture integration", () => {
             artifact.model = model;
 
             const llmStarted = Date.now();
-            const llmResponse = await extractRecipeWithGemini(
+            const llmResponse = await extractRecipe(
               extractedContent,
               prompt,
               model

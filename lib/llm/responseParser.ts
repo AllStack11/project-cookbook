@@ -1,5 +1,8 @@
 import { Recipe, LLMExtractionResponse } from "@/types/recipe";
 import { createLogger } from "@/lib/utils/logger";
+import { extractionResponseSchema } from "@/lib/validators/zodSchemas";
+import { sanitizeNutrition } from "@/lib/validators/nutritionValidator";
+import { fromZodError } from "zod-validation-error";
 
 const logger = createLogger("LLM:ResponseParser");
 
@@ -7,8 +10,10 @@ export interface ParseResult {
   success: boolean;
   recipe?: Recipe;
   error?: string;
+  parseError?: boolean;
   noRecipeFound?: boolean;
   noRecipeReason?: string;
+  validationError?: string;
 }
 
 export function parseRecipeFromLLMResponse(response: string): ParseResult {
@@ -21,8 +26,27 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
       cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     }
 
-    // Parse JSON
-    const parsed: LLMExtractionResponse = JSON.parse(cleaned);
+    // Parse JSON, with recovery for model outputs that append extra text.
+    const rawParsed = parseLLMJson(cleaned);
+
+    // Strict validation using Zod
+    const zodResult = extractionResponseSchema.safeParse(rawParsed);
+
+    if (!zodResult.success) {
+      const validationError = fromZodError(zodResult.error).message;
+      logger.error("Zod validation failed for LLM response", {
+        error: validationError,
+        rawResponse: response.substring(0, 500),
+      });
+
+      return {
+        success: false,
+        error: "Response failed schema validation",
+        validationError,
+      };
+    }
+
+    const parsed = zodResult.data;
 
     // Check if LLM indicated no recipe was found
     if (parsed.noRecipeFound === true) {
@@ -34,36 +58,6 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
       };
     }
 
-    // Validate it looks like a recipe
-    // If noRecipeFound is false or missing, we expect recipe fields
-    if (!parsed.title || !parsed.ingredients || !parsed.instructions) {
-      logger.error("Missing required fields in parsed response", {
-        hasTitle: !!parsed.title,
-        hasIngredients: !!parsed.ingredients,
-        hasInstructions: !!parsed.instructions,
-        noRecipeFound: parsed.noRecipeFound,
-        actualKeys: Object.keys(parsed),
-        rawResponse: response.substring(0, 200),
-      });
-
-      // Safety net: If noRecipeFound is explicitly false but we're missing fields,
-      // treat it as if the LLM should have set noRecipeFound to true
-      if (parsed.noRecipeFound === false) {
-        return {
-          success: false,
-          noRecipeFound: true,
-          noRecipeReason:
-            parsed.noRecipeReason ||
-            "LLM indicated content should have a recipe but failed to extract required fields (title, ingredients, or instructions)",
-        };
-      }
-
-      return {
-        success: false,
-        error: "Response does not contain required recipe fields",
-      };
-    }
-
     // Ensure instructions have step numbers
     if (Array.isArray(parsed.instructions)) {
       parsed.instructions = parsed.instructions.map(
@@ -72,7 +66,7 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
             return { step: index + 1, text: inst };
           }
           return { ...inst, step: inst.step || index + 1 };
-        }
+        },
       );
     }
 
@@ -130,6 +124,7 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
     if (!parsed.totalTime) {
       parsed.totalTime = (parsed.prepTime || 0) + (parsed.cookTime || 0);
     }
+    parsed.nutrition = sanitizeNutrition(parsed.nutrition);
 
     return {
       success: true,
@@ -138,15 +133,111 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
+    logger.warn("JSON parsing failed for LLM response", {
+      error: errorMessage,
+      rawResponse: response.substring(0, 500),
+    });
     return {
       success: false,
+      parseError: true,
       error: `Failed to parse LLM response: ${errorMessage}`,
     };
   }
 }
 
 export function extractJSONFromText(text: string): string | null {
-  // Try to find JSON in text using regex
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  return jsonMatch ? jsonMatch[0] : null;
+  return findFirstBalancedJSONObject(text);
+}
+
+function parseLLMJson(text: string): LLMExtractionResponse {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  const pushCandidate = (value: string | null): void => {
+    if (!value) return;
+    const normalized = value.trim();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    candidates.push(normalized);
+  };
+
+  pushCandidate(text);
+  const extracted = findFirstBalancedJSONObject(text);
+  pushCandidate(extracted);
+
+  const normalizedRaw = normalizeJsonLikeText(text);
+  pushCandidate(normalizedRaw);
+  pushCandidate(findFirstBalancedJSONObject(normalizedRaw));
+
+  if (extracted) {
+    pushCandidate(normalizeJsonLikeText(extracted));
+  }
+
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate) as LLMExtractionResponse;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Unable to parse JSON response");
+}
+
+function normalizeJsonLikeText(text: string): string {
+  return text
+    .replace(/\uFEFF/g, "")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
+    .replace(/,\s*([}\]])/g, "$1");
+}
+
+function findFirstBalancedJSONObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "{") {
+      depth++;
+      continue;
+    }
+
+    if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
 }

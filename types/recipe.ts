@@ -47,6 +47,7 @@ export interface ExtractionResult {
   metadata?: {
     cacheHit: boolean;
     modelUsed: string;
+    providerUsed?: string;
     tokensUsed?: number;
     processingTime: number;
     isFallback?: boolean;

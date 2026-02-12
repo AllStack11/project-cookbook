@@ -22,7 +22,6 @@
     "pre-deploy": "npm run type-check && npm run lint && node scripts/validate-deploy.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.0.2",
     "@sparticuz/chromium": "^143.0.4",
     "@vercel/kv": "^3.0.0",

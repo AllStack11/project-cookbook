@@ -146,6 +146,14 @@ export function validateRecipe(recipe: Recipe): RecipeValidationResult {
     });
   }
 
+  // Validate notes if present
+  if (recipe.notes !== undefined && !Array.isArray(recipe.notes)) {
+    errors.push({
+      field: "notes",
+      message: "Notes must be an array of strings",
+    });
+  }
+
   // Validate servings if present
   // Validate mandatory metadata
   if (!recipe.servings || recipe.servings < 1 || recipe.servings > 100) {
@@ -226,7 +234,7 @@ function looksLikeInstruction(text: string): boolean {
 
   // Check if it starts with an action verb (common in instructions)
   const startsWithVerb = INSTRUCTION_INDICATORS.some((indicator) =>
-    lowerText.startsWith(indicator)
+    lowerText.startsWith(indicator),
   );
 
   if (startsWithVerb) {
@@ -284,7 +292,7 @@ export function calculateConfidenceScore(recipe: Recipe): number {
     score += 5; // Base for having valid ingredients
 
     const detailedIngredients = recipe.ingredients.filter(
-      (ing) => ing.amount && ing.unit
+      (ing) => ing.amount && ing.unit,
     );
     detailRatio = detailedIngredients.length / recipe.ingredients.length;
 

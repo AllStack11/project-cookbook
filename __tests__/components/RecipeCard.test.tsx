@@ -91,4 +91,22 @@ describe("RecipeCard", () => {
 
     expect(screen.getByText("Preparation")).toBeInTheDocument();
   });
+
+  it("hides invalid placeholder nutrition values", () => {
+    const recipeWithInvalidNutrition = {
+      ...recipe,
+      nutrition: {
+        protein: "fat_g",
+        carbs: "sugar_g",
+        fat: "protein_g",
+      },
+    };
+
+    render(<RecipeCard recipe={recipeWithInvalidNutrition as any} />);
+
+    expect(screen.queryByText("Nutrition Facts")).not.toBeInTheDocument();
+    expect(screen.queryByText("fat_g")).not.toBeInTheDocument();
+    expect(screen.queryByText("sugar_g")).not.toBeInTheDocument();
+    expect(screen.queryByText("protein_g")).not.toBeInTheDocument();
+  });
 });

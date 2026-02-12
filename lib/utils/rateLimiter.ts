@@ -7,11 +7,19 @@ import { createLogger } from "./logger";
 
 const logger = createLogger("Utils:RateLimiter");
 
+function isDevelopmentMode(): boolean {
+  return process.env.NODE_ENV === "development";
+}
+
 export async function checkRateLimit(
   ip: string,
   isSuspicious = false
 ): Promise<{ allowed: boolean; remaining: number; resetAt?: number }> {
   const limit = isSuspicious ? SUSPICIOUS_TIER_LIMIT : FREE_TIER_LIMIT;
+  if (isDevelopmentMode()) {
+    return { allowed: true, remaining: limit };
+  }
+
   const key = `rate_limit:${ip}`;
 
   try {
@@ -39,6 +47,10 @@ export async function checkRateLimit(
 }
 
 export async function getRequestCount(ip: string): Promise<number> {
+  if (isDevelopmentMode()) {
+    return 0;
+  }
+
   try {
     return (await kv.get<number>(`rate_limit:${ip}`)) || 0;
   } catch (error) {
@@ -48,6 +60,10 @@ export async function getRequestCount(ip: string): Promise<number> {
 }
 
 export async function incrementRateLimit(ip: string): Promise<void> {
+  if (isDevelopmentMode()) {
+    return;
+  }
+
   const key = `rate_limit:${ip}`;
   const dayInSeconds = 24 * 60 * 60;
 
@@ -75,6 +91,10 @@ export async function incrementRateLimit(ip: string): Promise<void> {
 }
 
 export async function shouldShowCaptcha(ip: string): Promise<boolean> {
+  if (isDevelopmentMode()) {
+    return false;
+  }
+
   const recentKey = `recent_requests:${ip}`;
   try {
     const now = Date.now();
@@ -90,6 +110,10 @@ export async function shouldShowCaptcha(ip: string): Promise<boolean> {
 }
 
 export async function resetRateLimit(ip: string): Promise<void> {
+  if (isDevelopmentMode()) {
+    return;
+  }
+
   try {
     await kv.del(`rate_limit:${ip}`, `recent_requests:${ip}`);
   } catch (error) {

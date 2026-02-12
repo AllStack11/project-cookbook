@@ -5,7 +5,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 ## Features
 
 - **Multi-Source Support**: Extract recipes from YouTube, blogs, Instagram, TikTok, and more
-- **AI-Powered Extraction**: Uses Google Gemini AI to intelligently parse recipe content
+- **AI-Powered Extraction**: Uses a provider-agnostic LLM gateway (OpenRouter by default) to parse recipe content
 - **Clean Output**: Structured recipe format with ingredients, instructions, and metadata
 - **Cost-Optimized**: Smart caching and token reduction strategies
 - **Rate Limited**: Free tier with 10 extractions per day
@@ -15,7 +15,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 
 - **Framework**: Next.js 14 with App Router (TypeScript)
 - **Styling**: Tailwind CSS
-- **LLM Integration**: Google Gemini API (gemini-2.5-flash-lite for cost efficiency and speed)
+- **LLM Integration**: OpenRouter gateway (OpenAI-compatible API)
 - **Content Extraction**: youtube-transcript, Cheerio
 - **Testing**: Jest + React Testing Library
 - **Hosting**: Vercel-ready (serverless functions + CDN)
@@ -25,7 +25,7 @@ A Next.js web application that extracts clean, structured recipes from various s
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Google Gemini API key (get from https://ai.google.dev/)
+- OpenRouter API key (get from https://openrouter.ai/keys)
 
 ### Installation
 
@@ -51,8 +51,16 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```bash
-# LLM API - Google Gemini
-GEMINI_API_KEY=your_gemini_api_key_here
+# LLM Gateway (OpenRouter)
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+LLM_FREE_PRIMARY_MODEL=nvidia/nemotron-3-nano-30b-a3b:free
+LLM_FREE_SECONDARY_MODEL=openrouter/free
+LLM_PAID_FALLBACK_MODEL=qwen/qwen-2.5-7b-instruct
+# Optional compatibility override:
+# LLM_ALLOWED_MODELS=nvidia/nemotron-3-nano-30b-a3b:free,openrouter/free,qwen/qwen-2.5-7b-instruct
+LLM_MAX_MONTHLY_SPEND_USD=10
+LLM_REQUEST_TIMEOUT_MS=25000
 
 # Caching (optional - in-memory by default)
 # REDIS_URL=redis://localhost:6379
@@ -107,7 +115,7 @@ npm run test:coverage # Run tests with coverage report
 
 /lib
   /extractors        # Content extraction (YouTube, web scraping)
-  /llm               # LLM integration (Gemini client, prompts)
+  /llm               # LLM integration (provider adapter, prompts, budget guard)
   /cache             # Caching layer
   /validators        # Input and recipe validation
   /utils             # Utility functions
@@ -126,7 +134,7 @@ npm run test:coverage # Run tests with coverage report
    - Text: Direct input
 3. **Preprocessing**: Reduce token count by 50-70% (remove ads, navigation, etc.)
 4. **Cache Check**: Look for cached recipe by URL
-5. **LLM Processing**: Send to Google Gemini with structured prompt and JSON schema
+5. **LLM Processing**: Send to configured LLM gateway with structured prompt and JSON output constraints
 6. **Validation**: Verify recipe has required fields (2+ ingredients, 2+ steps)
 7. **Display**: Show formatted recipe with print/copy options
 
@@ -157,7 +165,7 @@ The app implements several cost-saving strategies:
 
 1. **Caching**: URL-based caching with 30-day TTL (blogs) / 7-day TTL (social media)
 2. **Token Reduction**: Strip ads, navigation, comments (50-70% reduction)
-3. **Efficient Model**: Use gemini-2.5-flash-lite for fast, cost-effective extractions
+3. **Model Policy**: Try `nvidia/nemotron-3-nano-30b-a3b:free`, then `openrouter/free`, and only then a cheap paid fallback on provider/runtime failures (timeouts, 429/5xx, transport issues)
 4. **Rate Limiting**: Prevent abuse with 10 requests/day free tier
 
 ## Logging & Monitoring
@@ -192,7 +200,7 @@ See [.env.example](.env.example) for all available environment variables.
 
 Required:
 
-- `GEMINI_API_KEY`: Your Google Gemini API key
+- `OPENROUTER_API_KEY`: Your OpenRouter API key
 
 Optional:
 
@@ -210,7 +218,7 @@ Optional:
 1. Push your code to GitHub
 2. Connect to Vercel (visit [vercel.com/new](https://vercel.com/new))
 3. Add these environment variables in Vercel dashboard:
-   - `GEMINI_API_KEY` (required)
+   - `OPENROUTER_API_KEY` (required)
    - `NEXT_PUBLIC_APP_URL` (your Vercel URL)
    - `ENABLE_DEBUG_LOGGING=false` (for production)
 4. Click "Deploy"

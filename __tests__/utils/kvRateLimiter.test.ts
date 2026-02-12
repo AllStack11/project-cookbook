@@ -26,9 +26,15 @@ jest.mock("@vercel/kv", () => ({
 
 describe("Vercel KV Rate Limiting", () => {
   const ip = "127.0.0.1";
+  const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  afterAll(() => {
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it("should allow request if under limit", async () => {
@@ -36,6 +42,14 @@ describe("Vercel KV Rate Limiting", () => {
     const result = await checkRateLimit(ip);
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBe(4); // 10 - 5 - 1
+  });
+
+  it("should bypass rate limiting in development mode", async () => {
+    process.env.NODE_ENV = "development";
+    const result = await checkRateLimit(ip);
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(10);
+    expect(kv.get).not.toHaveBeenCalled();
   });
 
   it("should block request if over limit", async () => {

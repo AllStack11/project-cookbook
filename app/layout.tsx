@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Script from "next/script";
 import AiStatusIndicator from "./components/AiStatusIndicator";
 import "./globals.css";
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
     "recipe from video",
   ],
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "https://justtherecipe.app"
+    process.env.NEXT_PUBLIC_APP_URL || "https://justtherecipe.app",
   ),
   openGraph: {
     title: "Just The Recipe - Extract Recipes from Any Source",
@@ -155,7 +156,10 @@ export default function RootLayout({
             </div>
           </header>
 
-          <main id="main-content" className="flex-1 py-8 md:py-12 px-4 sm:px-6 lg:px-8 relative z-10">
+          <main
+            id="main-content"
+            className="flex-1 py-8 md:py-12 px-4 sm:px-6 lg:px-8 relative z-10"
+          >
             {children}
           </main>
 
@@ -197,24 +201,37 @@ export default function RootLayout({
                   <span>🥗</span>
                   <span>🍜</span>
                 </div>
-
                 {/* Copyright */}
                 <p className="text-sm text-chocolate-500 font-medium">
                   &copy; {new Date().getFullYear()} All rights reserved
                 </p>
               </div>
-
               {/* Subtle divider with kitchen utensil pattern */}
-              <div className="mt-8 pt-6 border-t border-cream-200/50 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-chocolate-400">
+              <div className="mt-8 pt-6 border-t border-cream-200/50 flex flex-col items-center justify-center gap-3 text-chocolate-400">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium">Made with</span>
                   <span className="text-primary-500">❤️</span>
                   <span className="text-xs font-medium">
                     for food lovers everywhere
                   </span>
+                  <div className="hidden sm:block w-1 h-1 bg-cream-300 rounded-full" />
+                  <AiStatusIndicator />
                 </div>
-                <div className="hidden sm:block w-1 h-1 bg-cream-300 rounded-full" />
-                <AiStatusIndicator />
+                <div className="flex items-center gap-4 text-sm">
+                  <Link
+                    href="/privacy"
+                    className="text-chocolate-500 hover:text-chocolate-700 transition-colors"
+                  >
+                    Privacy
+                  </Link>
+                  <span className="text-cream-300">|</span>
+                  <Link
+                    href="/terms"
+                    className="text-chocolate-500 hover:text-chocolate-700 transition-colors"
+                  >
+                    Terms
+                  </Link>
+                </div>
               </div>
             </div>
           </footer>
@@ -223,3 +240,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+

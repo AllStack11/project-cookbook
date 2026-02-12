@@ -28,6 +28,39 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-02-12**: Feature: Google AdSense Setup - Privacy Policy & Terms of Service
+  - **Type**: Feature / Legal
+  - **Description**: Created required legal pages for Google AdSense approval and compliance.
+    - Created `/app/privacy/page.tsx` - Privacy Policy covering:
+      - Recipe data ownership (extracted recipes become property of Just The Recipe)
+      - LLM/AI technology disclosure (Google Gemini, OpenRouter)
+      - Minimal data collection (telemetry only, no personal data)
+      - Google AdSense cookies and advertising disclosure
+      - Third-party services list
+    - Created `/app/terms/page.tsx` - Terms of Service covering:
+      - Recipe data ownership and perpetual license grant
+      - Acceptable use policy and rate limits
+      - AI-generated content disclaimer
+      - Limitation of liability for recipe accuracy
+    - Updated `app/layout.tsx` footer with Privacy and Terms links
+  - **Impact**: Satisfies Google AdSense requirements for publisher approval. Protects legal interests by establishing clear data ownership and user responsibilities.
+
+- **2026-02-12**: Enhancement: LLM Response Reliability
+  - **Type**: Optimization
+  - **Description**: Implemented multiple layers of reliability to ensure LLM responses match the expected format.
+    - Added a few-shot example to the extraction prompt in `lib/llm/promptBuilder.ts`.
+    - Defined a strict Zod schema for recipe extraction in `lib/validators/zodSchemas.ts`.
+    - Refactored `lib/llm/responseParser.ts` to use Zod for type-safe parsing and validation.
+    - Implemented a self-correction retry loop in `lib/api/processWithLLM.ts` that provides feedback to the LLM on validation failures.
+  - **Impact**: Dramatically reduces "failed to parse" errors and ensures that even if an LLM makes a format mistake, it has an automatic chance to correct it before the request fails.
+
+- **2026-02-12**: Bug Fix: Recipe Notes Runtime Error
+  - **Type**: Bug Fix
+  - **Description**: Fixed `TypeError: recipe.notes.map is not a function` in `RecipeCard.tsx`.
+    - Added `Array.isArray()` checks to `RecipeCard.tsx` before mapping over notes.
+    - Enhanced `lib/validators/recipeValidator.ts` to validate that `notes` is an array of strings if present.
+  - **Impact**: Prevents application crashes when the LLM returns non-array data for the notes field.
+
 - **2026-01-15**: Optimization: Harsher Confidence Score with Incomplete Data Penalties
   - **Type**: Optimization / Quality
   - **Description**: Refactored the confidence score calculation in `lib/validators/recipeValidator.ts` to use a hybrid bonus/penalty model instead of purely additive scoring.

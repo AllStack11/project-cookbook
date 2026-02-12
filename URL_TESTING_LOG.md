@@ -10,7 +10,7 @@ Run:
 
 `RUN_LLM_URL_SUITE=true npm run test:llm-urls`
 
-The suite loads `GEMINI_API_KEY` from `.env.local`.
+The suite loads `OPENROUTER_API_KEY` from `.env.local`.
 `RUN_LLM_URL_SUITE` accepts: `true`, `1`, `yes`, `on`.
 
 PowerShell (current terminal session):
@@ -25,7 +25,7 @@ Permanent option: add `RUN_LLM_URL_SUITE=true` to `.env.local`.
 
 Optional env vars:
 
-- `LLM_URL_SUITE_MODEL` (default: `gemini-3-flash-preview`)
+- `LLM_URL_SUITE_MODEL` (default: `google/gemma-3-27b-it:free`)
 - `LLM_URL_SUITE_DELAY_MS` (default: `750`)
 - `LLM_URL_SUITE_SAVE_FULL_CONTENT=true` (include full extracted content in artifacts)
 

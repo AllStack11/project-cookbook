@@ -9,38 +9,27 @@ jest.mock("@/lib/utils/logger", () => ({
   })),
 }));
 
-const mockGenerateContent = jest.fn();
-const mockGetGenerativeModel = jest.fn(() => ({
-  generateContent: mockGenerateContent,
+jest.mock("@/lib/llm/modelSelector", () => ({
+  selectModelCandidates: jest.fn(() => [
+    { attemptType: "free_primary", model: "google/gemma-3-27b-it:free" },
+    { attemptType: "free_secondary", model: "openrouter/free" },
+    { attemptType: "paid_fallback", model: "qwen/qwen-2.5-7b-instruct" },
+  ]),
 }));
 
-jest.mock("@google/generative-ai", () => ({
-  GoogleGenerativeAI: jest.fn(() => ({
-    getGenerativeModel: mockGetGenerativeModel,
-  })),
+const mockCheckHealth = jest.fn();
+jest.mock("@/lib/llm/provider", () => ({
+  checkLLMProviderHealth: (...args: any[]) => mockCheckHealth(...args),
 }));
 
-describe("health gemini route", () => {
+describe("health llm route", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    delete process.env.GEMINI_API_KEY;
-  });
-
-  it("returns offline when GEMINI_API_KEY is missing", async () => {
-    const { GET } = await import("@/app/api/health/gemini/route");
-
-    const response = await GET();
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ status: "offline" });
   });
 
   it("returns online and sets cache header on successful check", async () => {
-    process.env.GEMINI_API_KEY = "test-key";
-    mockGenerateContent.mockResolvedValue({
-      response: Promise.resolve({}),
-    });
-
-    const { GET } = await import("@/app/api/health/gemini/route");
+    mockCheckHealth.mockResolvedValue(true);
+    const { GET } = await import("@/app/api/health/llm/route");
 
     const response = await GET();
     expect(response.status).toBe(200);
@@ -50,15 +39,33 @@ describe("health gemini route", () => {
     );
   });
 
-  it("returns offline when Gemini throws", async () => {
-    process.env.GEMINI_API_KEY = "test-key";
-    mockGenerateContent.mockRejectedValue(new Error("Gemini down"));
+  it("returns online when any fallback model is healthy", async () => {
+    mockCheckHealth
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const { GET } = await import("@/app/api/health/llm/route");
 
-    const { GET } = await import("@/app/api/health/gemini/route");
+    const response = await GET();
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: "online" });
+  });
+
+  it("returns offline when health check is false", async () => {
+    mockCheckHealth.mockResolvedValue(false);
+    const { GET } = await import("@/app/api/health/llm/route");
 
     const response = await GET();
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ status: "offline" });
   });
-});
 
+  it("gemini alias route proxies to llm health route", async () => {
+    mockCheckHealth.mockResolvedValue(true);
+    const { GET } = await import("@/app/api/health/gemini/route");
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: "online" });
+  });
+});

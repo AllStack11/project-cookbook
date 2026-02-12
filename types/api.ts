@@ -7,6 +7,7 @@ export enum StatusCode {
   FORBIDDEN = 403,
   NOT_FOUND = 404,
   RATE_LIMITED = 429,
+  SERVICE_UNAVAILABLE = 503,
   INTERNAL_SERVER_ERROR = 500,
 }
 
@@ -21,8 +22,11 @@ export interface ExtractSuccessResponse {
   metadata: {
     cacheHit: boolean;
     modelUsed: string;
+    providerUsed?: string;
     tokensUsed?: number;
     processingTime: number;
+    fallbackTierUsed?: "free_only" | "paid_fallback";
+    freeAttemptFailedReason?: string;
   };
 }
 

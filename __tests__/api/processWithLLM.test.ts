@@ -1,16 +1,16 @@
 /** @jest-environment node */
-import { NextResponse } from "next/server";
 import { processContentWithLLM } from "@/lib/api/processWithLLM";
 import { ErrorCode, StatusCode } from "@/types/api";
 import { SourceType } from "@/types/recipe";
+import { LLMProviderError } from "@/lib/llm/errors";
 
 jest.mock("@/lib/validators/recipeValidator", () => ({
   validateRecipe: jest.fn(),
   calculateConfidenceScore: jest.fn(),
 }));
 
-jest.mock("@/lib/llm/geminiClient", () => ({
-  extractRecipeWithGemini: jest.fn(),
+jest.mock("@/lib/llm/provider", () => ({
+  extractRecipe: jest.fn(),
 }));
 
 jest.mock("@/lib/llm/responseParser", () => ({
@@ -23,7 +23,12 @@ jest.mock("@/lib/llm/promptBuilder", () => ({
 }));
 
 jest.mock("@/lib/llm/modelSelector", () => ({
-  selectModel: jest.fn(),
+  selectModelCandidates: jest.fn(),
+}));
+
+jest.mock("@/lib/llm/budgetGuard", () => ({
+  canAffordEstimatedCall: jest.fn(),
+  recordActualSpend: jest.fn(),
 }));
 
 jest.mock("@/lib/cache/cacheClient", () => ({
@@ -54,49 +59,43 @@ import {
   validateRecipe,
   calculateConfidenceScore,
 } from "@/lib/validators/recipeValidator";
-import { extractRecipeWithGemini } from "@/lib/llm/geminiClient";
+import { extractRecipe } from "@/lib/llm/provider";
 import { parseRecipeFromLLMResponse } from "@/lib/llm/responseParser";
 import {
   buildRecipeExtractionPrompt,
   buildFallbackPrompt,
 } from "@/lib/llm/promptBuilder";
-import { selectModel } from "@/lib/llm/modelSelector";
+import { selectModelCandidates } from "@/lib/llm/modelSelector";
+import { canAffordEstimatedCall, recordActualSpend } from "@/lib/llm/budgetGuard";
 import { setCachedRecipe } from "@/lib/cache/cacheClient";
 import { saveRecipeToLongTermStorage } from "@/lib/db";
 import { incrementRateLimit, getRequestCount } from "@/lib/utils/rateLimiter";
 
-const mockValidateRecipe = validateRecipe as jest.MockedFunction<
-  typeof validateRecipe
->;
+const mockValidateRecipe = validateRecipe as jest.MockedFunction<typeof validateRecipe>;
 const mockCalculateConfidenceScore =
   calculateConfidenceScore as jest.MockedFunction<typeof calculateConfidenceScore>;
-const mockExtractRecipeWithGemini =
-  extractRecipeWithGemini as jest.MockedFunction<typeof extractRecipeWithGemini>;
+const mockExtractRecipe = extractRecipe as jest.MockedFunction<typeof extractRecipe>;
 const mockParseRecipeFromLLMResponse =
-  parseRecipeFromLLMResponse as jest.MockedFunction<
-    typeof parseRecipeFromLLMResponse
-  >;
+  parseRecipeFromLLMResponse as jest.MockedFunction<typeof parseRecipeFromLLMResponse>;
 const mockBuildRecipeExtractionPrompt =
-  buildRecipeExtractionPrompt as jest.MockedFunction<
-    typeof buildRecipeExtractionPrompt
-  >;
+  buildRecipeExtractionPrompt as jest.MockedFunction<typeof buildRecipeExtractionPrompt>;
 const mockBuildFallbackPrompt = buildFallbackPrompt as jest.MockedFunction<
   typeof buildFallbackPrompt
 >;
-const mockSelectModel = selectModel as jest.MockedFunction<typeof selectModel>;
-const mockSetCachedRecipe = setCachedRecipe as jest.MockedFunction<
-  typeof setCachedRecipe
+const mockSelectModelCandidates =
+  selectModelCandidates as jest.MockedFunction<typeof selectModelCandidates>;
+const mockCanAffordEstimatedCall =
+  canAffordEstimatedCall as jest.MockedFunction<typeof canAffordEstimatedCall>;
+const mockRecordActualSpend = recordActualSpend as jest.MockedFunction<
+  typeof recordActualSpend
 >;
+const mockSetCachedRecipe = setCachedRecipe as jest.MockedFunction<typeof setCachedRecipe>;
 const mockSaveRecipeToLongTermStorage =
-  saveRecipeToLongTermStorage as jest.MockedFunction<
-    typeof saveRecipeToLongTermStorage
-  >;
+  saveRecipeToLongTermStorage as jest.MockedFunction<typeof saveRecipeToLongTermStorage>;
 const mockIncrementRateLimit = incrementRateLimit as jest.MockedFunction<
   typeof incrementRateLimit
 >;
-const mockGetRequestCount = getRequestCount as jest.MockedFunction<
-  typeof getRequestCount
->;
+const mockGetRequestCount = getRequestCount as jest.MockedFunction<typeof getRequestCount>;
 
 const baseRecipe = {
   title: "Pasta",
@@ -124,13 +123,34 @@ describe("processWithLLM", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetRequestCount.mockResolvedValue(3);
-    mockSelectModel.mockReturnValue("gemini-2.5-flash-lite");
+    mockSelectModelCandidates.mockReturnValue([
+      {
+        attemptType: "free_primary",
+        model: "openrouter/free",
+        providerRouting: {
+          sort: "throughput",
+          require_parameters: true,
+          allow_fallbacks: false,
+        },
+      },
+      {
+        attemptType: "paid_fallback",
+        model: "qwen/qwen-2.5-7b-instruct",
+      },
+    ] as any);
+    mockCanAffordEstimatedCall.mockResolvedValue({
+      allowed: true,
+      currentSpendUsd: 0,
+      estimatedCallCostUsd: 0,
+      capUsd: 10,
+    });
     mockBuildRecipeExtractionPrompt.mockReturnValue("prompt");
     mockBuildFallbackPrompt.mockReturnValue("fallback prompt");
-    mockExtractRecipeWithGemini.mockResolvedValue({
+    mockExtractRecipe.mockResolvedValue({
       content: "{\"title\":\"Pasta\"}",
       tokensUsed: 120,
-      model: "gemini-2.5-flash-lite",
+      model: "openrouter/free",
+      provider: "openrouter",
     });
     mockParseRecipeFromLLMResponse.mockReturnValue({
       success: true,
@@ -138,6 +158,7 @@ describe("processWithLLM", () => {
     } as any);
     mockValidateRecipe.mockReturnValue({ isValid: true, errors: [] });
     mockCalculateConfidenceScore.mockReturnValue(88);
+    mockRecordActualSpend.mockResolvedValue(0);
   });
 
   it("returns successful extraction response", async () => {
@@ -159,8 +180,10 @@ describe("processWithLLM", () => {
     expect(payload.recipe.confidenceScore).toBe(88);
     expect(payload.recipe.sourcePlatform).toBe(SourceType.BLOG);
     expect(payload.recipe.sourceUrl).toBe("https://example.com/recipe");
-    expect(payload.metadata.modelUsed).toBe("gemini-2.5-flash-lite");
+    expect(payload.metadata.modelUsed).toBe("openrouter/free");
+    expect(payload.metadata.providerUsed).toBe("openrouter");
     expect(payload.metadata.tokensUsed).toBe(120);
+    expect(payload.metadata.fallbackTierUsed).toBe("free_only");
 
     expect(mockSetCachedRecipe).toHaveBeenCalledWith(
       "https://example.com/recipe",
@@ -170,8 +193,22 @@ describe("processWithLLM", () => {
     expect(mockIncrementRateLimit).toHaveBeenCalledWith("1.1.1.1");
   });
 
-  it("returns internal error when LLM call fails", async () => {
-    mockExtractRecipeWithGemini.mockRejectedValue(new Error("LLM down"));
+  it("escalates to paid fallback on provider/runtime free failure", async () => {
+    mockExtractRecipe
+      .mockRejectedValueOnce(
+        new LLMProviderError("rate limited", {
+          code: "rate_limited",
+          errorClass: "provider_runtime",
+          retryable: true,
+          statusCode: 429,
+        })
+      )
+      .mockResolvedValueOnce({
+        content: "{\"title\":\"Pasta\"}",
+        tokensUsed: 100,
+        model: "qwen/qwen-2.5-7b-instruct",
+        provider: "openrouter",
+      });
 
     const response = await processContentWithLLM(
       "recipe content",
@@ -183,11 +220,62 @@ describe("processWithLLM", () => {
       false
     );
 
-    expect(response.status).toBe(StatusCode.INTERNAL_SERVER_ERROR);
+    expect(response.status).toBe(StatusCode.OK);
+    const payload = await response.json();
+    expect(payload.metadata.modelUsed).toBe("qwen/qwen-2.5-7b-instruct");
+    expect(payload.metadata.fallbackTierUsed).toBe("paid_fallback");
+    expect(payload.metadata.freeAttemptFailedReason).toBe("rate_limited");
+    expect(mockExtractRecipe).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not escalate to paid fallback on invalid free request errors", async () => {
+    mockExtractRecipe.mockRejectedValueOnce(
+      new LLMProviderError("invalid request", {
+        code: "invalid_request",
+        errorClass: "invalid_request",
+        retryable: false,
+        statusCode: 400,
+      })
+    );
+
+    const response = await processContentWithLLM(
+      "recipe content",
+      SourceType.BLOG,
+      "1.1.1.1",
+      "",
+      Date.now(),
+      request,
+      false
+    );
+
+    expect(response.status).toBe(StatusCode.SERVICE_UNAVAILABLE);
+    expect(mockExtractRecipe).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns service unavailable when all model attempts fail", async () => {
+    mockCanAffordEstimatedCall.mockResolvedValue({
+      allowed: false,
+      currentSpendUsd: 10,
+      estimatedCallCostUsd: 0.01,
+      capUsd: 10,
+    });
+
+    const response = await processContentWithLLM(
+      "recipe content",
+      SourceType.BLOG,
+      "1.1.1.1",
+      "",
+      Date.now(),
+      request,
+      false
+    );
+
+    expect(response.status).toBe(StatusCode.SERVICE_UNAVAILABLE);
     await expect(response.json()).resolves.toMatchObject({
       success: false,
       errorCode: ErrorCode.INTERNAL_ERROR,
     });
+    expect(mockExtractRecipe).not.toHaveBeenCalled();
   });
 
   it("returns bad request when parser indicates no recipe", async () => {
@@ -238,6 +326,49 @@ describe("processWithLLM", () => {
     });
   });
 
+  it("runs self-correction when parser reports parseError", async () => {
+    mockParseRecipeFromLLMResponse
+      .mockReturnValueOnce({
+        success: false,
+        parseError: true,
+        error: "Failed to parse LLM response: Unexpected token",
+      } as any)
+      .mockReturnValueOnce({
+        success: true,
+        recipe: { ...baseRecipe },
+      } as any);
+
+    mockExtractRecipe
+      .mockResolvedValueOnce({
+        content: "{invalid",
+        tokensUsed: 90,
+        model: "openrouter/free",
+        provider: "openrouter",
+      })
+      .mockResolvedValueOnce({
+        content: "{\"title\":\"Pasta\"}",
+        tokensUsed: 30,
+        model: "openrouter/free",
+        provider: "openrouter",
+      });
+
+    const response = await processContentWithLLM(
+      "recipe content",
+      SourceType.BLOG,
+      "1.1.1.1",
+      "",
+      Date.now(),
+      request,
+      false
+    );
+
+    expect(response.status).toBe(StatusCode.OK);
+    expect(mockExtractRecipe).toHaveBeenCalledTimes(2);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+    });
+  });
+
   it("uses fallback flow when initial validation fails and fallback succeeds", async () => {
     mockParseRecipeFromLLMResponse
       .mockReturnValueOnce({
@@ -275,14 +406,10 @@ describe("processWithLLM", () => {
     const payload = await response.json();
 
     expect(mockBuildFallbackPrompt).toHaveBeenCalledTimes(1);
-    expect(mockExtractRecipeWithGemini).toHaveBeenCalledTimes(2);
+    expect(mockExtractRecipe).toHaveBeenCalledTimes(2);
     expect(payload.success).toBe(true);
     expect(payload.recipe.isPartialFallback).toBe(true);
-    expect(payload.recipe.fallbackFields).toEqual([
-      "title",
-      "ingredients",
-      "instructions",
-    ]);
+    expect(payload.recipe.fallbackFields).toEqual(["title", "ingredients", "instructions"]);
     expect(payload.metadata.isFallback).toBe(true);
   });
 
@@ -302,11 +429,12 @@ describe("processWithLLM", () => {
       missingTitle: true,
     });
 
-    mockExtractRecipeWithGemini
+    mockExtractRecipe
       .mockResolvedValueOnce({
         content: "{\"title\":\"\"}",
         tokensUsed: 50,
-        model: "gemini-2.5-flash-lite",
+        model: "openrouter/free",
+        provider: "openrouter",
       })
       .mockRejectedValueOnce(new Error("fallback failed"));
 
@@ -327,4 +455,3 @@ describe("processWithLLM", () => {
     });
   });
 });
-

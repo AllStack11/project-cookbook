@@ -57,7 +57,7 @@ function checkEnvExample() {
 
   const envExample = fs.readFileSync('.env.example', 'utf8');
   const requiredVars = [
-    'GEMINI_API_KEY',
+    'OPENROUTER_API_KEY',
     'NEXT_PUBLIC_APP_URL',
   ];
 

@@ -10,7 +10,7 @@ export default function AiStatusIndicator() {
   useEffect(() => {
     async function checkStatus() {
       try {
-        const response = await fetch("/api/health/gemini");
+        const response = await fetch("/api/health/llm");
         const data = await response.json();
         if (data.status === "online") {
           setStatus("online");
@@ -55,7 +55,7 @@ export default function AiStatusIndicator() {
       title={
         status === "offline"
           ? "The AI extraction service is currently unavailable."
-          : "Powered by Google Gemini API"
+          : "Powered by configured LLM gateway"
       }
     >
       <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor()}`} />

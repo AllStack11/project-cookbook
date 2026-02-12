@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Recipe } from "@/types/recipe";
 import { formatMinutes } from "@/lib/utils/timeFormatter";
+import { sanitizeNutrition } from "@/lib/validators/nutritionValidator";
 import AdBanner from "../AdBanner/AdBanner";
 import SourceBadge from "../SourceBadge/SourceBadge";
 
@@ -72,6 +73,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
   };
 
   const scaledIngredients = recipe.ingredients.map(scaleIngredient);
+  const nutrition = sanitizeNutrition(recipe.nutrition);
 
   return (
     <div className="w-full max-w-4xl mx-auto card-cozy overflow-hidden print:shadow-none print:border-none animate-fade-in-up">
@@ -406,7 +408,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         )}
 
         {/* Notes Section */}
-        {recipe.notes && recipe.notes.length > 0 && (
+        {Array.isArray(recipe.notes) && recipe.notes.length > 0 && (
           <div className="mt-12 md:mt-16 p-6 md:p-8 bg-gradient-to-br from-cream-50 to-cream-100/50 rounded-3xl border border-cream-200/50">
             <h4 className="text-lg font-black text-chocolate-900 mb-4 flex items-center gap-2 uppercase tracking-wider">
               <span className="text-xl">📝</span>
@@ -429,14 +431,14 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         )}
 
         {/* Nutrition Section */}
-        {recipe.nutrition && (
+        {nutrition && (
           <div className="mt-12 md:mt-16 pt-8 md:pt-10 border-t border-cream-200">
             <h4 className="text-xl md:text-2xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
               <span className="text-2xl">📊</span>
               Nutrition Facts
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {recipe.nutrition.calories && (
+              {nutrition.calories && (
                 <div className="p-5 md:p-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl border border-red-100 relative overflow-hidden group hover:shadow-warm transition-all">
                   <div className="absolute top-3 right-3 text-2xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🔥
@@ -445,11 +447,11 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                     Calories
                   </div>
                   <div className="text-2xl font-black text-chocolate-800">
-                    {recipe.nutrition.calories}
+                    {nutrition.calories}
                   </div>
                 </div>
               )}
-              {recipe.nutrition.protein && (
+              {nutrition.protein && (
                 <div className="p-5 md:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 relative overflow-hidden group hover:shadow-warm transition-all">
                   <div className="absolute top-3 right-3 text-2xl opacity-20 group-hover:opacity-40 transition-opacity">
                     💪
@@ -458,11 +460,11 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                     Protein
                   </div>
                   <div className="text-xl md:text-2xl font-black text-chocolate-800">
-                    {recipe.nutrition.protein}
+                    {nutrition.protein}
                   </div>
                 </div>
               )}
-              {recipe.nutrition.carbs && (
+              {nutrition.carbs && (
                 <div className="p-5 md:p-6 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl border border-amber-100 relative overflow-hidden group hover:shadow-warm transition-all">
                   <div className="absolute top-3 right-3 text-2xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🍞
@@ -471,11 +473,11 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                     Carbs
                   </div>
                   <div className="text-xl md:text-2xl font-black text-chocolate-800">
-                    {recipe.nutrition.carbs}
+                    {nutrition.carbs}
                   </div>
                 </div>
               )}
-              {recipe.nutrition.fat && (
+              {nutrition.fat && (
                 <div className="p-5 md:p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100 relative overflow-hidden group hover:shadow-warm transition-all">
                   <div className="absolute top-3 right-3 text-2xl opacity-20 group-hover:opacity-40 transition-opacity">
                     🥑
@@ -484,7 +486,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                     Fat
                   </div>
                   <div className="text-2xl font-black text-chocolate-800">
-                    {recipe.nutrition.fat}
+                    {nutrition.fat}
                   </div>
                 </div>
               )}
@@ -567,8 +569,16 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
       {copySuccess && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up print:hidden">
           <div className="bg-chocolate-900 text-white px-6 py-3 rounded-2xl shadow-warm-xl flex items-center gap-2 font-bold text-sm">
-            <svg className="w-5 h-5 text-herb-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            <svg
+              className="w-5 h-5 text-herb-400"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
             </svg>
             Recipe copied to clipboard!
           </div>
@@ -972,7 +982,7 @@ function formatRecipeAsText(recipe: Recipe): string {
     text += `${inst.step}. ${inst.text}\n`;
   });
 
-  if (recipe.notes && recipe.notes.length > 0) {
+  if (Array.isArray(recipe.notes) && recipe.notes.length > 0) {
     text += "\nNOTES:\n";
     recipe.notes.forEach((note) => (text += `- ${note}\n`));
   }

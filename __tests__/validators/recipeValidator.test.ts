@@ -31,6 +31,16 @@ describe("recipeValidator", () => {
       expect(result.errors).toHaveLength(0);
     });
 
+    it("should reject recipe when notes is not an array", () => {
+      const invalidRecipe = {
+        ...validRecipe,
+        notes: "This should be an array" as any,
+      };
+      const result = validateRecipe(invalidRecipe);
+      expect(result.isValid).toBe(false);
+      expect(result.errors.some((e) => e.field === "notes")).toBe(true);
+    });
+
     it("should reject recipe without title", () => {
       const recipe = { ...validRecipe, title: "" };
       const result = validateRecipe(recipe);
@@ -92,7 +102,7 @@ describe("recipeValidator", () => {
       const result = validateRecipe(recipe);
       expect(result.isValid).toBe(false);
       expect(result.errors.some((e) => e.field === "ingredients[1]")).toBe(
-        true
+        true,
       );
     });
 
@@ -107,7 +117,7 @@ describe("recipeValidator", () => {
       const result = validateRecipe(recipe);
       expect(result.isValid).toBe(false);
       expect(result.errors.some((e) => e.field === "instructions[1]")).toBe(
-        true
+        true,
       );
     });
 
@@ -122,7 +132,7 @@ describe("recipeValidator", () => {
       const result = validateRecipe(recipe);
       expect(result.isValid).toBe(false);
       expect(result.errors.some((e) => e.field === "instructions[1]")).toBe(
-        true
+        true,
       );
     });
 
