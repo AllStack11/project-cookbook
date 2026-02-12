@@ -76,3 +76,23 @@ export function getTokenBudget(
 ): number {
   return Math.max(0, maxTokens - usedTokens);
 }
+
+/**
+ * Returns the appropriate max token budget for a given source type.
+ * Social media posts are shorter, blogs are medium, YouTube transcripts are longer.
+ */
+export function getMaxTokensForSource(sourceType: string): number {
+  switch (sourceType) {
+    case "instagram":
+    case "tiktok":
+    case "social":
+      return MAX_TOKENS_SOCIAL;
+    case "blog":
+    case "website":
+      return MAX_TOKENS_BLOG;
+    case "youtube":
+      return MAX_TOKENS_YOUTUBE;
+    default:
+      return MAX_TOKENS;
+  }
+}

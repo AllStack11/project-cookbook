@@ -18,6 +18,7 @@ export default function Home() {
   } | null>(null);
 
   const loadingRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Force scroll to top on refresh/load
@@ -25,6 +26,10 @@ export default function Home() {
       window.history.scrollRestoration = "manual";
     }
     window.scrollTo(0, 0);
+
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -44,6 +49,14 @@ export default function Home() {
   }, [isLoading]);
 
   const handleSubmit = async (input: { url?: string; text?: string }) => {
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
     setRecipe(null);
@@ -55,15 +68,12 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(input),
+        signal: controller.signal,
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // If it's a cache hit, add an artificial 5-second delay on the client side
-        if (data.metadata?.cacheHit) {
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-        }
         setRecipe(data.recipe);
       } else {
         setError({
@@ -72,12 +82,18 @@ export default function Home() {
         });
       }
     } catch (err) {
+      // Silently ignore aborted requests
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
       setError({
         message: "Network error. Please check your connection and try again.",
         code: ErrorCode.NETWORK_ERROR,
       });
     } finally {
-      setIsLoading(false);
+      if (abortControllerRef.current === controller) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -157,27 +173,30 @@ export default function Home() {
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
-        <div ref={loadingRef} className="space-y-12 scroll-mt-24">
-          <LoadingState />
-          <div className="print:hidden">
-            <AdBanner slot="loading-bottom" />
+      {/* Dynamic content area with aria-live for screen readers */}
+      <div aria-live="polite" aria-atomic="true">
+        {/* Loading State */}
+        {isLoading && (
+          <div ref={loadingRef} className="space-y-12 scroll-mt-24">
+            <LoadingState />
+            <div className="print:hidden">
+              <AdBanner slot="loading-bottom" />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Error Display */}
-      {error && (
-        <ErrorDisplay
-          error={error.message}
-          errorCode={error.code}
-          onRetry={handleRetry}
-        />
-      )}
+        {/* Error Display */}
+        {error && (
+          <ErrorDisplay
+            error={error.message}
+            errorCode={error.code}
+            onRetry={handleRetry}
+          />
+        )}
 
-      {/* Recipe Card */}
-      {recipe && <RecipeCard recipe={recipe} />}
+        {/* Recipe Card */}
+        {recipe && <RecipeCard recipe={recipe} />}
+      </div>
 
       {/* Supported Sources Section */}
       {!isLoading && !error && !recipe && (

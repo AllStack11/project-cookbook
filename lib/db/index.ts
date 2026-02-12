@@ -1,11 +1,12 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
+import { createLogger } from "@/lib/utils/logger";
+
+const dbLogger = createLogger("DB:Init");
 
 if (!process.env.DATABASE_URL) {
-  // We don't throw error here to allow the app to boot in dev without DB,
-  // but we should log it or handle it in the saving function
-  console.warn("DATABASE_URL is not set. Long-term storage will be disabled.");
+  dbLogger.warn("DATABASE_URL is not set. Long-term storage will be disabled.");
 }
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -15,8 +16,6 @@ export const db = drizzle(sql, { schema });
 import { Recipe } from "@/types/recipe";
 import { recipes } from "./schema";
 import { normalizeUrl } from "@/lib/cache/cacheClient";
-import { createLogger } from "@/lib/utils/logger";
-
 export interface UserMetadata {
   ipAddress?: string;
   userAgent?: string;

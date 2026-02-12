@@ -3,6 +3,9 @@ export const SUSPICIOUS_TIER_LIMIT = 2; // Strict limit for VPNs/Proxies
 export const RAPID_REQUEST_THRESHOLD = 3; // requests within short window
 
 import { kv } from "@vercel/kv";
+import { createLogger } from "./logger";
+
+const logger = createLogger("Utils:RateLimiter");
 
 export async function checkRateLimit(
   ip: string,
@@ -29,9 +32,9 @@ export async function checkRateLimit(
       remaining: limit - count - 1,
     };
   } catch (error) {
-    console.error("Rate limit check error:", error);
-    // Fail open in case of KV issues to not block users, but log it
-    return { allowed: true, remaining: 1 };
+    logger.error("Rate limit check error - failing closed", { error });
+    // Fail closed: deny requests when rate limiter is unavailable
+    return { allowed: false, remaining: 0 };
   }
 }
 
@@ -39,7 +42,7 @@ export async function getRequestCount(ip: string): Promise<number> {
   try {
     return (await kv.get<number>(`rate_limit:${ip}`)) || 0;
   } catch (error) {
-    console.error("Get request count error:", error);
+    logger.error("Get request count error:", error);
     return 0;
   }
 }
@@ -67,7 +70,7 @@ export async function incrementRateLimit(ip: string): Promise<void> {
     await kv.ltrim(recentKey, 0, 9); // Keep last 10
     await kv.expire(recentKey, 5 * 60); // 5 minutes
   } catch (error) {
-    console.error("Increment rate limit error:", error);
+    logger.error("Increment rate limit error:", error);
   }
 }
 
@@ -81,7 +84,7 @@ export async function shouldShowCaptcha(ip: string): Promise<boolean> {
     const rapidCount = recentRequests.filter((t) => t > fiveMinutesAgo).length;
     return rapidCount >= RAPID_REQUEST_THRESHOLD;
   } catch (error) {
-    console.error("Should show captcha error:", error);
+    logger.error("Should show captcha error:", error);
     return false;
   }
 }
@@ -90,6 +93,6 @@ export async function resetRateLimit(ip: string): Promise<void> {
   try {
     await kv.del(`rate_limit:${ip}`, `recent_requests:${ip}`);
   } catch (error) {
-    console.error("Reset rate limit error:", error);
+    logger.error("Reset rate limit error:", error);
   }
 }

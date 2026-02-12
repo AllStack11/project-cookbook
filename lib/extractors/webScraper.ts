@@ -1,6 +1,8 @@
 import * as cheerio from "cheerio";
 import { preprocessContent } from "./preprocessor";
 import { scrapeInstagramContent } from "./instagramExtractor";
+import { getRandomUserAgent } from "./userAgents";
+import { validateUrlSafety } from "@/lib/utils/urlSanitizer";
 
 import { Recipe } from "@/types/recipe";
 
@@ -30,13 +32,22 @@ export async function scrapeWebContent(url: string): Promise<WebScraperResult> {
       return scrapeInstagramContent(url);
     }
 
+    // SSRF protection: validate URL doesn't point to internal resources
+    const safetyCheck = await validateUrlSafety(url);
+    if (!safetyCheck.safe) {
+      return {
+        success: false,
+        error: safetyCheck.error || "URL blocked for security reasons",
+      };
+    }
+
     // Fetch HTML with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; RecipeExtractor/1.0)",
+        "User-Agent": getRandomUserAgent(),
       },
       signal: controller.signal,
     });
@@ -145,13 +156,22 @@ export async function extractStructuredRecipe(
       return scrapeInstagramContent(url);
     }
 
+    // SSRF protection: validate URL doesn't point to internal resources
+    const safetyCheck = await validateUrlSafety(url);
+    if (!safetyCheck.safe) {
+      return {
+        success: false,
+        error: safetyCheck.error || "URL blocked for security reasons",
+      };
+    }
+
     // Fetch with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; RecipeExtractor/1.0)",
+        "User-Agent": getRandomUserAgent(),
       },
       signal: controller.signal,
     });

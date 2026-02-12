@@ -4,19 +4,65 @@ import AiStatusIndicator from "./components/AiStatusIndicator";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Just The Recipe - Extract Recipes from Any Source",
+  title: {
+    default: "Just The Recipe - Extract Recipes from Any Source",
+    template: "%s | Just The Recipe",
+  },
   description:
-    "Extract clean, structured recipes from YouTube videos, blog posts, and social media using AI-powered content parsing.",
+    "Extract clean, structured recipes from YouTube videos, blog posts, and social media using AI-powered content parsing. No signup required.",
   keywords: [
-    "recipe",
+    "recipe extractor",
+    "recipe parser",
+    "YouTube recipe",
     "cooking",
     "food",
     "just the recipe",
-    "recipe extractor",
-    "recipe parser",
+    "AI recipe",
+    "recipe from video",
   ],
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://justtherecipe.app"
+  ),
+  openGraph: {
+    title: "Just The Recipe - Extract Recipes from Any Source",
+    description:
+      "The cleanest way to extract recipes from YouTube, blogs, and social media. Powered by AI.",
+    url: "/",
+    siteName: "Just The Recipe",
+    type: "website",
+    locale: "en_US",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Just The Recipe - AI-Powered Recipe Extraction",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Just The Recipe - Extract Recipes from Any Source",
+    description:
+      "The cleanest way to extract recipes from YouTube, blogs, and social media.",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large" as const,
+      "max-snippet": -1,
+    },
+  },
   icons: {
     icon: "/favicon.svg",
+  },
+  alternates: {
+    canonical: "/",
   },
 };
 
@@ -28,6 +74,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        {/* Skip navigation link for keyboard/screen reader users */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-lg focus:font-semibold focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
         {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
           <Script
             async
@@ -102,7 +155,7 @@ export default function RootLayout({
             </div>
           </header>
 
-          <main className="flex-1 py-8 md:py-12 px-4 sm:px-6 lg:px-8 relative z-10">
+          <main id="main-content" className="flex-1 py-8 md:py-12 px-4 sm:px-6 lg:px-8 relative z-10">
             {children}
           </main>
 

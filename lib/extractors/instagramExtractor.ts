@@ -5,8 +5,26 @@ import { retryWithBackoff } from "../utils/retry";
 
 const logger = createLogger("Extractor:Instagram");
 
-// Dynamic imports for Puppeteer to support both local dev and Vercel
+const BROWSER_LAUNCH_TIMEOUT = 15000;
+const OVERALL_EXTRACTION_TIMEOUT = 30000;
+
+/**
+ * Wraps getBrowserInternal with a timeout to prevent hanging on cold starts.
+ */
 async function getBrowser() {
+  return Promise.race([
+    getBrowserInternal(),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Browser launch timed out after 15s")),
+        BROWSER_LAUNCH_TIMEOUT
+      )
+    ),
+  ]);
+}
+
+// Dynamic imports for Puppeteer to support both local dev and Vercel
+async function getBrowserInternal() {
   // Check if we're running on Vercel
   const isVercel = !!(process.env.VERCEL || process.env.AWS_EXECUTION_ENV);
 
@@ -103,6 +121,23 @@ async function getBrowser() {
  * Internal extraction function (without retry logic)
  */
 async function performInstagramExtraction(url: string): Promise<WebScraperResult> {
+  return Promise.race([
+    performInstagramExtractionInternal(url),
+    new Promise<WebScraperResult>((resolve) =>
+      setTimeout(
+        () =>
+          resolve({
+            success: false,
+            error:
+              "Instagram extraction timed out. This often happens on first request - try again in a few seconds.",
+          }),
+        OVERALL_EXTRACTION_TIMEOUT
+      )
+    ),
+  ]);
+}
+
+async function performInstagramExtractionInternal(url: string): Promise<WebScraperResult> {
   let browser;
   const startTime = Date.now();
   let browserLaunchTime = 0;

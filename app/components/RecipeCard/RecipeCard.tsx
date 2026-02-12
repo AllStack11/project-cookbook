@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Recipe } from "@/types/recipe";
 import { formatMinutes } from "@/lib/utils/timeFormatter";
 import AdBanner from "../AdBanner/AdBanner";
@@ -13,6 +14,7 @@ interface RecipeCardProps {
 export default function RecipeCard({ recipe }: RecipeCardProps) {
   const [viewMode, setViewMode] = useState<"columns" | "document">("columns");
   const [currentServings, setCurrentServings] = useState(recipe.servings || 4);
+  const [copySuccess, setCopySuccess] = useState(false);
   const originalServings = recipe.servings || 4;
 
   const handlePrint = () => {
@@ -22,7 +24,8 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
   const handleCopy = async () => {
     const recipeText = formatRecipeAsText(recipe);
     await navigator.clipboard.writeText(recipeText);
-    alert("Recipe copied to clipboard!");
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2500);
   };
 
   const adjustServings = (delta: number) => {
@@ -77,10 +80,13 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         {/* Background image with overlay */}
         {recipe.imageUrl && (
           <div className="absolute inset-0 z-0">
-            <img
+            <Image
               src={recipe.imageUrl}
               alt={recipe.title}
-              className="w-full h-full object-cover opacity-30"
+              fill
+              className="object-cover opacity-30"
+              sizes="(max-width: 896px) 100vw, 896px"
+              priority
             />
             <div className="absolute inset-0 bg-gradient-to-t from-chocolate-900 via-chocolate-900/70 to-chocolate-900/50" />
           </div>
@@ -96,9 +102,9 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           <div className="flex flex-col md:flex-row justify-between items-start gap-6">
             <div className="flex-1 w-full">
               {/* Title */}
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight mb-4 leading-tight">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight mb-4 leading-tight">
                 {recipe.title}
-              </h1>
+              </h2>
 
               {/* Description */}
               {recipe.description && (
@@ -284,16 +290,16 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-14">
             {/* Ingredients Column */}
             <div className="lg:col-span-5">
-              <h2 className="text-2xl md:text-3xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
+              <h3 className="text-2xl md:text-3xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
                 <span className="w-10 h-10 bg-gradient-to-br from-herb-100 to-herb-50 rounded-xl flex items-center justify-center text-xl shadow-warm-sm">
                   🛒
                 </span>
                 Ingredients
-              </h2>
+              </h3>
               <ul className="space-y-3">
                 {scaledIngredients.map((ingredient, index) => (
                   <li
-                    key={index}
+                    key={`ing-${ingredient.item}-${ingredient.amount || ""}-${index}`}
                     className="flex items-start group p-3 rounded-xl hover:bg-cream-50 transition-colors"
                   >
                     <div className="flex-shrink-0 w-9 h-9 bg-cream-100 rounded-lg flex items-center justify-center text-lg mr-4 group-hover:scale-110 group-hover:bg-cream-200 transition-all">
@@ -320,12 +326,12 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
             {/* Instructions Column */}
             <div className="lg:col-span-7">
-              <h2 className="text-2xl md:text-3xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
+              <h3 className="text-2xl md:text-3xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
                 <span className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-50 rounded-xl flex items-center justify-center text-xl shadow-warm-sm">
                   👨‍🍳
                 </span>
                 Instructions
-              </h2>
+              </h3>
               <div className="space-y-6 md:space-y-8">
                 {recipe.instructions.map((instruction) => (
                   <div
@@ -351,14 +357,14 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           <div className="max-w-3xl mx-auto space-y-12">
             {/* Document View - Ingredients */}
             <section>
-              <h2 className="text-2xl font-black text-chocolate-900 mb-6 pb-3 border-b-2 border-cream-200 flex items-center gap-3">
+              <h3 className="text-2xl font-black text-chocolate-900 mb-6 pb-3 border-b-2 border-cream-200 flex items-center gap-3">
                 <span className="text-2xl">🛒</span>
                 Ingredients
-              </h2>
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
                 {scaledIngredients.map((ingredient, index) => (
                   <div
-                    key={index}
+                    key={`ing-doc-${ingredient.item}-${ingredient.amount || ""}-${index}`}
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-cream-50 transition-colors"
                   >
                     <span className="text-lg flex-shrink-0">
@@ -379,10 +385,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
 
             {/* Document View - Instructions */}
             <section>
-              <h2 className="text-2xl font-black text-chocolate-900 mb-6 pb-3 border-b-2 border-cream-200 flex items-center gap-3">
+              <h3 className="text-2xl font-black text-chocolate-900 mb-6 pb-3 border-b-2 border-cream-200 flex items-center gap-3">
                 <span className="text-2xl">👨‍🍳</span>
                 Preparation
-              </h2>
+              </h3>
               <div className="space-y-5">
                 {recipe.instructions.map((instruction) => (
                   <div key={instruction.step} className="flex gap-4">
@@ -402,10 +408,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         {/* Notes Section */}
         {recipe.notes && recipe.notes.length > 0 && (
           <div className="mt-12 md:mt-16 p-6 md:p-8 bg-gradient-to-br from-cream-50 to-cream-100/50 rounded-3xl border border-cream-200/50">
-            <h3 className="text-lg font-black text-chocolate-900 mb-4 flex items-center gap-2 uppercase tracking-wider">
+            <h4 className="text-lg font-black text-chocolate-900 mb-4 flex items-center gap-2 uppercase tracking-wider">
               <span className="text-xl">📝</span>
               Chef's Notes
-            </h3>
+            </h4>
             <ul className="space-y-3">
               {recipe.notes.map((note, index) => (
                 <li
@@ -425,10 +431,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
         {/* Nutrition Section */}
         {recipe.nutrition && (
           <div className="mt-12 md:mt-16 pt-8 md:pt-10 border-t border-cream-200">
-            <h3 className="text-xl md:text-2xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
+            <h4 className="text-xl md:text-2xl font-black text-chocolate-900 mb-6 md:mb-8 flex items-center gap-3">
               <span className="text-2xl">📊</span>
               Nutrition Facts
-            </h3>
+            </h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {recipe.nutrition.calories && (
                 <div className="p-5 md:p-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl border border-red-100 relative overflow-hidden group hover:shadow-warm transition-all">
@@ -556,6 +562,18 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           />
         </div>
       </div>
+
+      {/* Toast notification */}
+      {copySuccess && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up print:hidden">
+          <div className="bg-chocolate-900 text-white px-6 py-3 rounded-2xl shadow-warm-xl flex items-center gap-2 font-bold text-sm">
+            <svg className="w-5 h-5 text-herb-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Recipe copied to clipboard!
+          </div>
+        </div>
+      )}
     </div>
   );
 }

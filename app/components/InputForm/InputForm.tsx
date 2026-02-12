@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface InputFormProps {
   onSubmit: (input: { url?: string; text?: string }) => void;
@@ -13,6 +13,13 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [isAnimating, setIsAnimating] = useState(false);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +27,8 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
 
     // Trigger substantial click animation
     setIsAnimating(true);
-    setTimeout(() => setIsAnimating(false), 600);
+    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+    animationTimeoutRef.current = setTimeout(() => setIsAnimating(false), 600);
 
     if (inputType === "url") {
       if (!url.trim()) {
@@ -106,6 +114,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
               <div className="mb-5 md:mb-6">
                 <div className="relative group">
                   {/* Input field */}
+                  <label htmlFor="url" className="sr-only">Recipe URL</label>
                   <input
                     type="url"
                     id="url"
@@ -137,6 +146,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
               </div>
             ) : (
               <div className="mb-5 md:mb-6">
+                <label htmlFor="text" className="sr-only">Recipe text</label>
                 <textarea
                   id="text"
                   value={text}

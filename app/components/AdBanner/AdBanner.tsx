@@ -11,6 +11,14 @@ interface AdBannerProps {
   isPremium?: boolean;
 }
 
+// Reserved heights per slot to prevent Cumulative Layout Shift (CLS)
+const SLOT_HEIGHTS: Record<string, string> = {
+  "hero-bottom": "100px",
+  "loading-bottom": "100px",
+  "recipe-sidebar": "250px",
+  "recipe-bottom": "100px",
+};
+
 const AdBanner = ({
   slot,
   format = "auto",
@@ -21,6 +29,7 @@ const AdBanner = ({
 }: AdBannerProps) => {
   const [, setIsLoaded] = useState(false);
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+  const reservedHeight = SLOT_HEIGHTS[slot] || "100px";
 
   useEffect(() => {
     // Skip if premium or no client ID
@@ -80,11 +89,11 @@ const AdBanner = ({
   return (
     <div
       className={`ad-container overflow-hidden flex justify-center w-full my-4 rounded-2xl ${className}`}
-      style={style}
+      style={{ minHeight: reservedHeight, ...style }}
     >
       <ins
         className="adsbygoogle"
-        style={{ display: "block", ...style }}
+        style={{ display: "block", minHeight: reservedHeight, ...style }}
         data-ad-client={adsenseClientId}
         data-ad-slot={slot}
         data-ad-format={format}

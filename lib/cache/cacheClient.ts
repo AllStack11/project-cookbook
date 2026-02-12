@@ -1,6 +1,9 @@
 import { Recipe } from "@/types/recipe";
 import { createHash } from "crypto";
 import { kv } from "@vercel/kv";
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger("Cache:Client");
 
 // TTLs in seconds for Redis
 export const TTL_BLOG = 30 * 24 * 60 * 60; // 30 days
@@ -112,7 +115,7 @@ export async function getCachedRecipe(url: string): Promise<Recipe | null> {
     const recipe = await kv.get<Recipe>(`recipe:${key}`);
     return recipe;
   } catch (error) {
-    console.error("Cache get error:", error);
+    logger.error("Cache get error", { error });
     return null;
   }
 }
@@ -127,7 +130,7 @@ export async function setCachedRecipe(
     // Vercel KV set takes seconds for ex option
     await kv.set(`recipe:${key}`, recipe, { ex: ttl });
   } catch (error) {
-    console.error("Cache set error:", error);
+    logger.error("Cache set error", { error });
   }
 }
 
@@ -136,7 +139,7 @@ export async function invalidateCache(url: string): Promise<void> {
     const key = generateCacheKey(url);
     await kv.del(`recipe:${key}`);
   } catch (error) {
-    console.error("Cache invalidate error:", error);
+    logger.error("Cache invalidate error", { error });
   }
 }
 
@@ -154,7 +157,7 @@ export async function getCacheStats(): Promise<{
       misses: 0,
     };
   } catch (error) {
-    console.error("Cache stats error:", error);
+    logger.error("Cache stats error", { error });
     return { size: 0, hits: 0, misses: 0 };
   }
 }

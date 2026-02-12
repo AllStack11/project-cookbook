@@ -1,5 +1,6 @@
 import { YoutubeTranscript } from "youtube-transcript";
 import { preprocessContent } from "./preprocessor";
+import { getRandomUserAgent } from "./userAgents";
 import { createLogger } from "@/lib/utils/logger";
 
 const logger = createLogger("Extractor:YouTube");
@@ -223,8 +224,7 @@ async function extractWithTimedText(
         try {
           const response = await fetch(timedTextUrl, {
             headers: {
-              "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "User-Agent": getRandomUserAgent(),
               Accept: "*/*",
             },
           });
@@ -273,8 +273,7 @@ async function extractWithTimedText(
     try {
       const trackListResponse = await fetch(trackListUrl, {
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "User-Agent": getRandomUserAgent(),
         },
       });
 
@@ -301,8 +300,7 @@ async function extractWithTimedText(
               try {
                 const resp = await fetch(url, {
                   headers: {
-                    "User-Agent":
-                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "User-Agent": getRandomUserAgent(),
                   },
                 });
 
@@ -451,8 +449,7 @@ export async function extractYoutubeDescription(
 
     const response = await fetch(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": getRandomUserAgent(),
         "Accept-Language": "en-US,en;q=0.9",
       },
     });

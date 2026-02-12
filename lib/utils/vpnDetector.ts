@@ -2,11 +2,26 @@ import { createLogger } from "./logger";
 
 const logger = createLogger("Utils:VPNDetector");
 
+const SUSPICIOUS_THRESHOLD = 0.5;
+
+// Known bot/automation user-agent patterns
+const BOT_UA_PATTERNS = [
+  /curl\//i,
+  /wget\//i,
+  /python-requests/i,
+  /axios\//i,
+  /node-fetch/i,
+  /httpie/i,
+  /postman/i,
+  /insomnia/i,
+  /scrapy/i,
+  /phantomjs/i,
+  /headlesschrome/i,
+];
+
 /**
  * Detects if a request is coming from a VPN, proxy, or hosting provider.
- * This is a multi-layered check using:
- * 1. Known headers (Vercel/Cloudflare specific)
- * 2. IP Intelligence APIs (Optional placeholder)
+ * Uses a scoring system with multiple signals.
  */
 export async function isSuspiciousIP(
   ip: string,
@@ -16,39 +31,93 @@ export async function isSuspiciousIP(
   reason?: string;
   confidence: number;
 }> {
-  // 1. Check for common VPN/Proxy headers
-  // Some CDNs or proxies add these headers (currently unused but may be used in future enhancements)
+  let score = 0;
+  const reasons: string[] = [];
 
-  // If there are multiple hops in x-forwarded-for, it's more likely to be a proxy/VPN
+  // 1. Multi-hop proxy detection
   const forwardedFor = headers.get("x-forwarded-for");
   if (forwardedFor && forwardedFor.split(",").length > 2) {
-    logger.warn("Suspicious multi-hop connection detected", {
-      ip,
-      hops: forwardedFor,
-    });
-    return {
-      isSuspicious: true,
-      reason: "Multi-hop proxy detected",
-      confidence: 0.7,
-    };
+    score += 0.3;
+    reasons.push("Multi-hop proxy detected");
   }
 
-  // 2. Vercel-specific checks (if applicable)
-  // Vercel sometimes provides location info that can be inconsistent with VPNs
-  // Currently unused but may be used for future geo-based detection
-  // const country = headers.get("x-vercel-ip-country");
-  // const city = headers.get("x-vercel-ip-city");
+  // 2. Missing or empty IP
+  if (!ip || ip === "unknown") {
+    score += 0.4;
+    reasons.push("No IP address available");
+  }
 
-  // If we wanted to use an external API like ip-api.com (Free for non-commercial)
-  // try {
-  //   const response = await fetch(`http://ip-api.com/json/${ip}?fields=proxy,hosting`);
-  //   const data = await response.json();
-  //   if (data.proxy || data.hosting) {
-  //     return { isSuspicious: true, reason: data.proxy ? "VPN/Proxy" : "Hosting Provider", confidence: 0.9 };
-  //   }
-  // } catch (e) {
-  //   logger.error("Failed to check external IP intelligence", e);
-  // }
+  // 3. Vercel geo-header checks
+  const country = headers.get("x-vercel-ip-country");
+  const timezone = headers.get("x-vercel-ip-timezone");
 
-  return { isSuspicious: false, confidence: 0 };
+  // Missing geo data when on Vercel suggests proxy/VPN hiding location
+  const isVercel = !!(process.env.VERCEL || process.env.AWS_EXECUTION_ENV);
+  if (isVercel && !country) {
+    score += 0.2;
+    reasons.push("Missing geo data on Vercel");
+  }
+
+  // Timezone mismatch with country can indicate VPN
+  if (country && timezone) {
+    const mismatch = detectGeoMismatch(country, timezone);
+    if (mismatch) {
+      score += 0.2;
+      reasons.push(`Geo mismatch: ${country} with timezone ${timezone}`);
+    }
+  }
+
+  // 4. User-agent analysis
+  const userAgent = headers.get("user-agent") || "";
+  if (!userAgent) {
+    score += 0.3;
+    reasons.push("Missing user-agent");
+  } else {
+    for (const pattern of BOT_UA_PATTERNS) {
+      if (pattern.test(userAgent)) {
+        score += 0.4;
+        reasons.push("Bot/automation user-agent detected");
+        break;
+      }
+    }
+  }
+
+  const isSuspicious = score >= SUSPICIOUS_THRESHOLD;
+
+  if (isSuspicious) {
+    logger.warn("Suspicious request detected", {
+      ip,
+      score,
+      reasons,
+    });
+  }
+
+  return {
+    isSuspicious,
+    reason: reasons.length > 0 ? reasons.join("; ") : undefined,
+    confidence: Math.min(score, 1),
+  };
+}
+
+/**
+ * Basic geo mismatch detection between country code and timezone.
+ */
+function detectGeoMismatch(country: string, timezone: string): boolean {
+  const countryTimezoneMap: Record<string, string[]> = {
+    US: ["America/"],
+    CA: ["America/"],
+    GB: ["Europe/London"],
+    DE: ["Europe/Berlin"],
+    FR: ["Europe/Paris"],
+    JP: ["Asia/Tokyo"],
+    AU: ["Australia/"],
+    IN: ["Asia/Kolkata", "Asia/Calcutta"],
+    BR: ["America/Sao_Paulo", "America/Fortaleza"],
+    CN: ["Asia/Shanghai"],
+  };
+
+  const expectedPrefixes = countryTimezoneMap[country];
+  if (!expectedPrefixes) return false;
+
+  return !expectedPrefixes.some((prefix) => timezone.startsWith(prefix));
 }

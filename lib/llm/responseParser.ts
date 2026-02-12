@@ -1,4 +1,7 @@
 import { Recipe, LLMExtractionResponse } from "@/types/recipe";
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger("LLM:ResponseParser");
 
 export interface ParseResult {
   success: boolean;
@@ -34,8 +37,7 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
     // Validate it looks like a recipe
     // If noRecipeFound is false or missing, we expect recipe fields
     if (!parsed.title || !parsed.ingredients || !parsed.instructions) {
-      // Log the actual parsed content for debugging
-      console.error("[ResponseParser] Missing required fields:", {
+      logger.error("Missing required fields in parsed response", {
         hasTitle: !!parsed.title,
         hasIngredients: !!parsed.ingredients,
         hasInstructions: !!parsed.instructions,
