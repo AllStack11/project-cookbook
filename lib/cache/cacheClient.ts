@@ -16,7 +16,7 @@ export const TTL_DEFAULT = TTL_BLOG;
  */
 async function withTimeout<T>(
   promise: Promise<T>,
-  timeoutMs: number = 1500
+  timeoutMs: number = 2500
 ): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)

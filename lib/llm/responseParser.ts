@@ -164,6 +164,10 @@ function parseLLMJson(text: string): LLMExtractionResponse {
   const extracted = findFirstBalancedJSONObject(text);
   pushCandidate(extracted);
 
+  // Attempt to repair truncated JSON if it looks cut off
+  const repaired = attemptRepairTruncatedJSON(text);
+  pushCandidate(repaired);
+
   const normalizedRaw = normalizeJsonLikeText(text);
   pushCandidate(normalizedRaw);
   pushCandidate(findFirstBalancedJSONObject(normalizedRaw));
@@ -237,6 +241,91 @@ function findFirstBalancedJSONObject(text: string): string | null {
         return text.slice(start, i + 1);
       }
     }
+  }
+
+  return null;
+}
+
+/**
+ * Attempts to repair JSON that has been truncated (cut off mid-stream).
+ * This is a best-effort recovery for long recipes that hit token limits.
+ */
+function attemptRepairTruncatedJSON(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let stack: ("{" | "[")[] = [];
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "{") {
+      depth++;
+      stack.push("{");
+      continue;
+    }
+    if (ch === "[") {
+      stack.push("[");
+      continue;
+    }
+    if (ch === "}") {
+      depth--;
+      if (stack.length > 0 && stack[stack.length - 1] === "{") {
+        stack.pop();
+      }
+      continue;
+    }
+    if (ch === "]") {
+      if (stack.length > 0 && stack[stack.length - 1] === "[") {
+        stack.pop();
+      }
+      continue;
+    }
+  }
+
+  // If depth > 0, it's definitely truncated
+  if (depth > 0 || inString || stack.length > 0) {
+    let repaired = text.trim();
+
+    // 1. Close open string
+    if (inString) {
+      repaired += '"';
+    }
+
+    // 2. Remove trailing comma if it exists (very common truncation point)
+    repaired = repaired.replace(/,\s*$/, "");
+
+    // 3. Close open arrays/objects in reverse order
+    while (stack.length > 0) {
+      const last = stack.pop();
+      if (last === "{") repaired += "}";
+      else if (last === "[") repaired += "]";
+    }
+
+    return repaired;
   }
 
   return null;

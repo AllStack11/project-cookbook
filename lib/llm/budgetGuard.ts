@@ -1,7 +1,21 @@
 import { kv } from "@vercel/kv";
 import { createLogger } from "@/lib/utils/logger";
+import { retryWithBackoff } from "@/lib/utils/retry";
 
 const logger = createLogger("LLM:BudgetGuard");
+
+/**
+ * Wraps KV calls with a timeout to prevent hanging the entire request.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = 2500
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)
+  );
+  return Promise.race([promise, timeoutPromise]);
+}
 
 const FALLBACK_MAX_MONTHLY_SPEND_USD = 10;
 const AVG_OUTPUT_TOKENS = 900;
@@ -58,7 +72,11 @@ export function estimateCostUsd(
 async function getCurrentSpendUsd(monthKey: string): Promise<number> {
   const spendKey = getMonthlySpendKey(monthKey);
   try {
-    const value = await kv.get<number>(spendKey);
+    const value = await retryWithBackoff(
+      () => withTimeout(kv.get<number>(spendKey)),
+      { maxRetries: 1, initialDelayMs: 100 },
+      "BudgetGuard:Get"
+    );
     if (typeof value === "number") return value;
   } catch (error) {
     logger.warn("Failed to read spend from KV, using in-memory fallback", {
@@ -93,6 +111,7 @@ export async function canAffordEstimatedCall(
     };
   }
 
+  // If we can't get current spend due to KV errors, we assume allowed (fail-open)
   return {
     allowed: currentSpendUsd + estimatedCallCostUsd <= capUsd,
     currentSpendUsd,
@@ -118,10 +137,18 @@ export async function recordActualSpend(
 
   try {
     const monthlyTtlSeconds = 45 * 24 * 60 * 60;
-    const currentValue = (await kv.get<number>(spendKey)) || 0;
-    const nextValue = Number((currentValue + actualCost).toFixed(6));
-    await kv.set(spendKey, nextValue);
-    await kv.expire(spendKey, monthlyTtlSeconds);
+    const nextValue = await retryWithBackoff(
+      async () => {
+        const currentValue = (await withTimeout(kv.get<number>(spendKey))) || 0;
+        const next = Number((currentValue + actualCost).toFixed(6));
+        await withTimeout(kv.set(spendKey, next));
+        await withTimeout(kv.expire(spendKey, monthlyTtlSeconds));
+        return next;
+      },
+      { maxRetries: 1, initialDelayMs: 100 },
+      "BudgetGuard:Record"
+    );
+
     logger.cost("Recorded monthly LLM spend", {
       modelUsed: model,
       estimatedCost: actualCost,

@@ -28,11 +28,20 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-03-15**: Enhancement: Resilience Adjustments for LLM and KV Stability
+  - **Type**: Optimization / Reliability
+  - **Description**: Further hardened the app based on real-world logs showing JSON truncation and KV timeouts.
+    - Increased `LLM_MAX_OUTPUT_TOKENS` to 2,000 to prevent truncated JSON on long recipes.
+    - Adjusted KV timeouts to 2.5s across the board to better accommodate free-tier cold starts.
+    - Hardened `lib/llm/budgetGuard.ts` with retries/timeouts and explicit fail-open logic.
+    - Enhanced `lib/llm/responseParser.ts` with an `attemptRepairTruncatedJSON` utility to salvage recipes cut off mid-JSON.
+  - **Impact**: Increased extraction success rate for complex recipes and improved overall system robustness during high-latency periods on Vercel's free tier infrastructure.
+
 - **2026-03-15**: Enhancement: System Hardening against Redis/KV Outages
   - **Type**: Optimization / Reliability
   - **Description**: Hardened the application against transient Vercel KV (Redis) connection errors and cold starts.
     - Implemented `retryWithBackoff` logic for all KV operations in `lib/cache/cacheClient.ts` and `lib/utils/rateLimiter.ts`.
-    - Added mandatory `withTimeout` wrappers (1.0s - 1.5s) to all KV calls to prevent them from hanging the main request thread.
+    - Added mandatory `withTimeout` wrappers (1.0s - 1.5s, now 2.5s) to all KV calls to prevent them from hanging the main request thread.
     - Combined with "fail-open" logic, this ensures the app gracefully skips caching/rate-limiting if the database is struggling.
   - **Impact**: Dramatically reduced the impact of Vercel KV cold starts on free tier and transient network issues. The app is now robust enough to survive database unavailability without affecting the core user experience.
 
