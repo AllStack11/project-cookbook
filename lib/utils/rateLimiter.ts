@@ -4,8 +4,22 @@ export const RAPID_REQUEST_THRESHOLD = 3; // requests within short window
 
 import { kv } from "@vercel/kv";
 import { createLogger } from "./logger";
+import { retryWithBackoff } from "./retry";
 
 const logger = createLogger("Utils:RateLimiter");
+
+/**
+ * Wraps KV calls with a timeout to prevent hanging the entire request.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = 1000
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)
+  );
+  return Promise.race([promise, timeoutPromise]);
+}
 
 function isDevelopmentMode(): boolean {
   return process.env.NODE_ENV === "development";
@@ -23,11 +37,15 @@ export async function checkRateLimit(
   const key = `rate_limit:${ip}`;
 
   try {
-    const count = (await kv.get<number>(key)) || 0;
+    const count = await retryWithBackoff(
+      () => withTimeout(kv.get<number>(key)),
+      { maxRetries: 1, initialDelayMs: 100 },
+      "RateLimit:Get"
+    ) || 0;
 
     if (count >= limit) {
       // Get remaining TTL to tell user when it resets
-      const ttl = await kv.ttl(key);
+      const ttl = await withTimeout(kv.ttl(key)).catch(() => -1);
       return {
         allowed: false,
         remaining: 0,
@@ -40,9 +58,14 @@ export async function checkRateLimit(
       remaining: limit - count - 1,
     };
   } catch (error) {
-    logger.error("Rate limit check error - failing closed", { error });
-    // Fail closed: deny requests when rate limiter is unavailable
-    return { allowed: false, remaining: 0 };
+    logger.error("Rate limit check error - failing open", {
+      error,
+      ip,
+      isSuspicious,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    // Fail open: allow requests when rate limiter is unavailable to prevent total outage
+    return { allowed: true, remaining: 1 };
   }
 }
 
@@ -52,9 +75,17 @@ export async function getRequestCount(ip: string): Promise<number> {
   }
 
   try {
-    return (await kv.get<number>(`rate_limit:${ip}`)) || 0;
+    return (await retryWithBackoff(
+      () => withTimeout(kv.get<number>(`rate_limit:${ip}`)),
+      { maxRetries: 1, initialDelayMs: 100 },
+      "RateLimit:GetCount"
+    )) || 0;
   } catch (error) {
-    logger.error("Get request count error:", error);
+    logger.error("Get request count error:", {
+      error,
+      ip,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return 0;
   }
 }
@@ -68,25 +99,32 @@ export async function incrementRateLimit(ip: string): Promise<void> {
   const dayInSeconds = 24 * 60 * 60;
 
   try {
-    const multi = kv.multi();
-    multi.incr(key);
-    // Only set expiry if it's a new key (TTL will be -1)
-    // Actually, INCR + EXPIRE with NX is easier in traditional Redis,
-    // but here we can just check if it was 1 after increment
-    const results = await multi.exec();
-    const newCount = results[0] as number;
+    await retryWithBackoff(
+      async () => {
+        const multi = kv.multi();
+        multi.incr(key);
+        const results = await withTimeout(multi.exec());
+        const newCount = results[0] as number;
 
-    if (newCount === 1) {
-      await kv.expire(key, dayInSeconds);
-    }
+        if (newCount === 1) {
+          await withTimeout(kv.expire(key, dayInSeconds));
+        }
 
-    // Also track recent requests for CAPTCHA
-    const recentKey = `recent_requests:${ip}`;
-    await kv.lpush(recentKey, Date.now());
-    await kv.ltrim(recentKey, 0, 9); // Keep last 10
-    await kv.expire(recentKey, 5 * 60); // 5 minutes
+        // Also track recent requests for CAPTCHA
+        const recentKey = `recent_requests:${ip}`;
+        await withTimeout(kv.lpush(recentKey, Date.now()));
+        await withTimeout(kv.ltrim(recentKey, 0, 9)); // Keep last 10
+        await withTimeout(kv.expire(recentKey, 5 * 60)); // 5 minutes
+      },
+      { maxRetries: 1, initialDelayMs: 100 },
+      "RateLimit:Increment"
+    );
   } catch (error) {
-    logger.error("Increment rate limit error:", error);
+    logger.error("Increment rate limit error:", {
+      error,
+      ip,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -99,7 +137,11 @@ export async function shouldShowCaptcha(ip: string): Promise<boolean> {
   try {
     const now = Date.now();
     const fiveMinutesAgo = now - 5 * 60 * 1000;
-    const recentRequests = await kv.lrange<number>(recentKey, 0, -1);
+    const recentRequests = await retryWithBackoff(
+      () => withTimeout(kv.lrange<number>(recentKey, 0, -1)),
+      { maxRetries: 1, initialDelayMs: 100 },
+      "RateLimit:GetRecent"
+    );
 
     const rapidCount = recentRequests.filter((t) => t > fiveMinutesAgo).length;
     return rapidCount >= RAPID_REQUEST_THRESHOLD;
@@ -115,7 +157,11 @@ export async function resetRateLimit(ip: string): Promise<void> {
   }
 
   try {
-    await kv.del(`rate_limit:${ip}`, `recent_requests:${ip}`);
+    await retryWithBackoff(
+      () => withTimeout(kv.del(`rate_limit:${ip}`, `recent_requests:${ip}`)),
+      { maxRetries: 1, initialDelayMs: 100 },
+      "RateLimit:Reset"
+    );
   } catch (error) {
     logger.error("Reset rate limit error:", error);
   }

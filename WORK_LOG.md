@@ -28,6 +28,22 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-03-15**: Enhancement: System Hardening against Redis/KV Outages
+  - **Type**: Optimization / Reliability
+  - **Description**: Hardened the application against transient Vercel KV (Redis) connection errors and cold starts.
+    - Implemented `retryWithBackoff` logic for all KV operations in `lib/cache/cacheClient.ts` and `lib/utils/rateLimiter.ts`.
+    - Added mandatory `withTimeout` wrappers (1.0s - 1.5s) to all KV calls to prevent them from hanging the main request thread.
+    - Combined with "fail-open" logic, this ensures the app gracefully skips caching/rate-limiting if the database is struggling.
+  - **Impact**: Dramatically reduced the impact of Vercel KV cold starts on free tier and transient network issues. The app is now robust enough to survive database unavailability without affecting the core user experience.
+
+- **2026-03-15**: Bug Fix: Global Rate Limit Block (Fail-Open Implementation)
+  - **Type**: Bug Fix / Reliability
+  - **Description**: Fixed an issue where all users were being blocked by the rate limiter due to "fail-closed" logic during Vercel KV outages or connection errors.
+    - Modified `lib/utils/rateLimiter.ts` to implement "fail-open" logic in `checkRateLimit`.
+    - Enhanced error logging with IP and detailed error messages to help diagnose KV connection issues.
+    - Added diagnostic logging to `getRequestCount` and `incrementRateLimit`.
+  - **Impact**: Restored service for all users. The application will now remain available even if the rate-limiting database is temporarily unreachable, preventing a total service outage.
+
 - **2026-02-12**: Feature: Google AdSense Setup - Privacy Policy & Terms of Service
   - **Type**: Feature / Legal
   - **Description**: Created required legal pages for Google AdSense approval and compliance.

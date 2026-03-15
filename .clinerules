@@ -7,7 +7,7 @@ When working on this project, you must adhere to the following rules:
 3. **Follow Technical Standards**:
    - Use the logging system in `lib/utils/logger.ts`.
    - Adhere to the `Recipe` interface defined in `types/recipe.ts`.
-   - Prioritize cost-efficiency (Gemini models, token optimization, and caching).
+   - Prioritize cost-efficiency (token optimization, and caching).
 4. **Validation**: Always validate LLM responses using the logic in `lib/validators/recipeValidator.ts`.
 
 ## Work Log Updates

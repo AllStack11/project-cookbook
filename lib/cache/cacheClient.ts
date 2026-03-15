@@ -2,6 +2,7 @@ import { Recipe } from "@/types/recipe";
 import { createHash } from "crypto";
 import { kv } from "@vercel/kv";
 import { createLogger } from "@/lib/utils/logger";
+import { retryWithBackoff } from "@/lib/utils/retry";
 
 const logger = createLogger("Cache:Client");
 
@@ -9,6 +10,19 @@ const logger = createLogger("Cache:Client");
 export const TTL_BLOG = 30 * 24 * 60 * 60; // 30 days
 export const TTL_SOCIAL = 7 * 24 * 60 * 60; // 7 days
 export const TTL_DEFAULT = TTL_BLOG;
+
+/**
+ * Wraps KV calls with a timeout to prevent hanging the entire request.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = 1500
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)
+  );
+  return Promise.race([promise, timeoutPromise]);
+}
 
 /**
  * Normalizes a URL to ensure consistent cache keys.
@@ -112,10 +126,22 @@ export function generateCacheKey(url: string): string {
 export async function getCachedRecipe(url: string): Promise<Recipe | null> {
   try {
     const key = generateCacheKey(url);
-    const recipe = await kv.get<Recipe>(`recipe:${key}`);
+    const recipe = await retryWithBackoff(
+      () => withTimeout(kv.get<Recipe>(`recipe:${key}`)),
+      {
+        maxRetries: 1,
+        initialDelayMs: 200,
+        maxDelayMs: 500,
+      },
+      "Cache:Get"
+    );
     return recipe;
   } catch (error) {
-    logger.error("Cache get error", { error });
+    logger.error("Cache get error", {
+      error,
+      url,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
@@ -128,18 +154,37 @@ export async function setCachedRecipe(
   try {
     const key = generateCacheKey(url);
     // Vercel KV set takes seconds for ex option
-    await kv.set(`recipe:${key}`, recipe, { ex: ttl });
+    await retryWithBackoff(
+      () => withTimeout(kv.set(`recipe:${key}`, recipe, { ex: ttl })),
+      {
+        maxRetries: 1,
+        initialDelayMs: 200,
+        maxDelayMs: 500,
+      },
+      "Cache:Set"
+    );
   } catch (error) {
-    logger.error("Cache set error", { error });
+    logger.error("Cache set error", {
+      error,
+      url,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
 export async function invalidateCache(url: string): Promise<void> {
   try {
     const key = generateCacheKey(url);
-    await kv.del(`recipe:${key}`);
+    await retryWithBackoff(
+      () => withTimeout(kv.del(`recipe:${key}`)),
+      {
+        maxRetries: 1,
+        initialDelayMs: 200,
+      },
+      "Cache:Invalidate"
+    );
   } catch (error) {
-    logger.error("Cache invalidate error", { error });
+    logger.error("Cache invalidate error", { error, url });
   }
 }
 
