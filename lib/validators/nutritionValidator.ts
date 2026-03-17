@@ -1,7 +1,5 @@
 import { Nutrition } from "@/types/recipe";
 
-const VALID_NUTRITION_UNITS = /^(g|gram|grams|mg|kcal|cal)$/i;
-
 function isPlaceholderNutritionToken(value: string): boolean {
   const normalized = value.trim().toLowerCase();
   return /^[a-z]+_g$/.test(normalized);
