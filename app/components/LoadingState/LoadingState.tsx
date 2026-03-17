@@ -145,35 +145,33 @@ export default function LoadingState() {
             </p>
           </div>
 
-          {/* Status badges */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-cream-100 rounded-full">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          {/* Progress Section */}
+          <div className="max-w-xs mx-auto w-full mb-8">
+            <div className="relative h-4 bg-cream-100 rounded-full overflow-hidden border border-cream-200/50 shadow-inner">
+              <div
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary-400 via-primary-500 to-primary-600 transition-all duration-1000 ease-linear shadow-[0_0_12px_rgba(235,122,66,0.3)]"
+                style={{ width: `${Math.min((elapsed / 45) * 100, 100)}%` }}
+              >
+                <div className="absolute inset-0 shimmer-effect opacity-30"></div>
               </div>
-              <span className="text-xs font-bold text-chocolate-600 uppercase tracking-wider">
-                {elapsed}s elapsed
+            </div>
+            <div className="flex justify-between mt-2 px-1">
+              <span className="text-[10px] font-black text-chocolate-400 uppercase tracking-widest">
+                Whisking...
+              </span>
+              <span className="text-[10px] font-black text-primary-600 uppercase tracking-widest">
+                {Math.min(Math.round((elapsed / 45) * 100), 100)}%
               </span>
             </div>
-            {elapsed > 30 && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-herb-50 border border-herb-200/50 rounded-full animate-fade-in">
-                <span className="text-sm">✨</span>
-                <span className="text-xs font-bold text-herb-700 uppercase tracking-wider">
-                  Almost ready!
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Divider */}
           <div className="divider-warm mb-6 md:mb-8" />
 
           {/* Cooking fact card */}
-          <div className="p-6 md:p-8 bg-gradient-to-br from-cream-50 to-cream-100/50 rounded-3xl border border-cream-200/50 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <div className="bg-white px-4 py-1.5 rounded-full border border-cream-200 shadow-warm-sm">
+          <div className="p-8 md:p-8 bg-gradient-to-br from-cream-50 to-cream-100/50 rounded-3xl border border-cream-200/50 relative">
+            <div className="absolute -top-3.5 md:-top-3 left-1/2 -translate-x-1/2">
+              <div className="bg-white px-4 py-1.5 rounded-full border border-cream-200 shadow-warm-sm whitespace-nowrap">
                 <span className="text-xs font-black text-primary-600 uppercase tracking-widest">
                   Did You Know?
                 </span>

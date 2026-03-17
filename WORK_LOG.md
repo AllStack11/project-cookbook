@@ -28,6 +28,8 @@ Each entry should include:
 
 ## Log Entries
 
+- 2026-03-17, UI Enhancement, Replaced seconds counter with a themed progress bar in LoadingState component, Improved visual progress tracking and loading UX.
+- 2026-03-17, UI Fix, Fixed overlapping "Did You Know" badge on mobile in LoadingState component, Improved readability and UI consistency on mobile devices.
 - **2026-03-17**: Enhancement: permissive Nutrition Validation and KV Backoff Adjustments
   - **Type**: Optimization / Reliability
   - **Description**: Addressed new edge cases in LLM outputs and persistent free-tier KV timeouts.
