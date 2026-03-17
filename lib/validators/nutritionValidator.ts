@@ -15,12 +15,14 @@ export function isValidNutritionMacroValue(value: string): boolean {
     return false;
   }
 
+  // Permissive check: must contain at least one digit
   if (!/\d/.test(normalized)) {
     return false;
   }
 
+  // Regex to match a number and an optional unit (e.g., "10g", "10 g", "10 grams", "~10g")
   const match = normalized.match(
-    /^<?\s*(\d+(?:\.\d+)?)\s*([a-z]+)?\s*$/i
+    /^[^0-9]*\s*(\d+(?:\.\d+)?)\s*([a-z]+)?\s*.*$/i
   );
   if (!match) {
     return false;
@@ -31,7 +33,9 @@ export function isValidNutritionMacroValue(value: string): boolean {
     return true;
   }
 
-  return VALID_NUTRITION_UNITS.test(unit);
+  // Only validate the unit if one was found, but be very permissive about the unit itself
+  // as long as it's not some crazy long injection string.
+  return unit.length <= 10;
 }
 
 export function sanitizeNutrition(

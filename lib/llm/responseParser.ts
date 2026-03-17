@@ -29,6 +29,11 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
     // Parse JSON, with recovery for model outputs that append extra text.
     const rawParsed = parseLLMJson(cleaned);
 
+    // Pre-sanitize nutrition to prevent Zod from failing the entire recipe on a single macro error
+    if (rawParsed && typeof rawParsed === "object" && (rawParsed as any).nutrition) {
+      (rawParsed as any).nutrition = sanitizeNutrition((rawParsed as any).nutrition);
+    }
+
     // Strict validation using Zod
     const zodResult = extractionResponseSchema.safeParse(rawParsed);
 

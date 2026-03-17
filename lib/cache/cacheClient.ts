@@ -130,8 +130,8 @@ export async function getCachedRecipe(url: string): Promise<Recipe | null> {
       () => withTimeout(kv.get<Recipe>(`recipe:${key}`)),
       {
         maxRetries: 1,
-        initialDelayMs: 200,
-        maxDelayMs: 500,
+        initialDelayMs: 500,
+        maxDelayMs: 1000,
       },
       "Cache:Get"
     );
@@ -158,8 +158,8 @@ export async function setCachedRecipe(
       () => withTimeout(kv.set(`recipe:${key}`, recipe, { ex: ttl })),
       {
         maxRetries: 1,
-        initialDelayMs: 200,
-        maxDelayMs: 500,
+        initialDelayMs: 500,
+        maxDelayMs: 1000,
       },
       "Cache:Set"
     );
@@ -179,7 +179,7 @@ export async function invalidateCache(url: string): Promise<void> {
       () => withTimeout(kv.del(`recipe:${key}`)),
       {
         maxRetries: 1,
-        initialDelayMs: 200,
+        initialDelayMs: 500,
       },
       "Cache:Invalidate"
     );

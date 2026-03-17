@@ -28,6 +28,14 @@ Each entry should include:
 
 ## Log Entries
 
+- **2026-03-17**: Enhancement: permissive Nutrition Validation and KV Backoff Adjustments
+  - **Type**: Optimization / Reliability
+  - **Description**: Addressed new edge cases in LLM outputs and persistent free-tier KV timeouts.
+    - Loosened `isValidNutritionMacroValue` regex to handle more LLM variations (spaces, tildes, etc.).
+    - Modified `parseRecipeFromLLMResponse` to pre-sanitize nutrition data, preventing Zod from failing the entire recipe on minor macro formatting errors.
+    - Increased KV initial retry backoff to 500ms to better accommodate Vercel free-tier cold starts.
+  - **Impact**: Reduced "Failed to parse AI response" errors due to minor nutrition formatting and improved KV connection success rates.
+
 - **2026-03-15**: Enhancement: Resilience Adjustments for LLM and KV Stability
   - **Type**: Optimization / Reliability
   - **Description**: Further hardened the app based on real-world logs showing JSON truncation and KV timeouts.
