@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { isValidNutritionMacroValue } from "@/lib/validators/nutritionValidator";
 
 export const ingredientSchema = z.object({
   item: z.string().min(1, "Ingredient item name is required"),
