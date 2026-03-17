@@ -16,7 +16,7 @@ export const TTL_DEFAULT = TTL_BLOG;
  */
 async function withTimeout<T>(
   promise: Promise<T>,
-  timeoutMs: number = 2500
+  timeoutMs: number = 4000
 ): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)
@@ -130,8 +130,8 @@ export async function getCachedRecipe(url: string): Promise<Recipe | null> {
       () => withTimeout(kv.get<Recipe>(`recipe:${key}`)),
       {
         maxRetries: 1,
-        initialDelayMs: 500,
-        maxDelayMs: 1000,
+        initialDelayMs: 1000,
+        maxDelayMs: 2000,
       },
       "Cache:Get"
     );
@@ -158,8 +158,8 @@ export async function setCachedRecipe(
       () => withTimeout(kv.set(`recipe:${key}`, recipe, { ex: ttl })),
       {
         maxRetries: 1,
-        initialDelayMs: 500,
-        maxDelayMs: 1000,
+        initialDelayMs: 1000,
+        maxDelayMs: 2000,
       },
       "Cache:Set"
     );
@@ -179,7 +179,7 @@ export async function invalidateCache(url: string): Promise<void> {
       () => withTimeout(kv.del(`recipe:${key}`)),
       {
         maxRetries: 1,
-        initialDelayMs: 500,
+        initialDelayMs: 1000,
       },
       "Cache:Invalidate"
     );

@@ -13,7 +13,7 @@ const logger = createLogger("Utils:RateLimiter");
  */
 async function withTimeout<T>(
   promise: Promise<T>,
-  timeoutMs: number = 2500
+  timeoutMs: number = 4000
 ): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)
@@ -39,7 +39,7 @@ export async function checkRateLimit(
   try {
     const count = await retryWithBackoff(
       () => withTimeout(kv.get<number>(key)),
-      { maxRetries: 1, initialDelayMs: 500 },
+      { maxRetries: 1, initialDelayMs: 1000 },
       "RateLimit:Get"
     ) || 0;
 
@@ -77,7 +77,7 @@ export async function getRequestCount(ip: string): Promise<number> {
   try {
     return (await retryWithBackoff(
       () => withTimeout(kv.get<number>(`rate_limit:${ip}`)),
-      { maxRetries: 1, initialDelayMs: 500 },
+      { maxRetries: 1, initialDelayMs: 1000 },
       "RateLimit:GetCount"
     )) || 0;
   } catch (error) {
@@ -116,7 +116,7 @@ export async function incrementRateLimit(ip: string): Promise<void> {
         await withTimeout(kv.ltrim(recentKey, 0, 9)); // Keep last 10
         await withTimeout(kv.expire(recentKey, 5 * 60)); // 5 minutes
       },
-      { maxRetries: 1, initialDelayMs: 500 },
+      { maxRetries: 1, initialDelayMs: 1000 },
       "RateLimit:Increment"
     );
   } catch (error) {
@@ -139,7 +139,7 @@ export async function shouldShowCaptcha(ip: string): Promise<boolean> {
     const fiveMinutesAgo = now - 5 * 60 * 1000;
     const recentRequests = await retryWithBackoff(
       () => withTimeout(kv.lrange<number>(recentKey, 0, -1)),
-      { maxRetries: 1, initialDelayMs: 500 },
+      { maxRetries: 1, initialDelayMs: 1000 },
       "RateLimit:GetRecent"
     );
 
@@ -159,7 +159,7 @@ export async function resetRateLimit(ip: string): Promise<void> {
   try {
     await retryWithBackoff(
       () => withTimeout(kv.del(`rate_limit:${ip}`, `recent_requests:${ip}`)),
-      { maxRetries: 1, initialDelayMs: 500 },
+      { maxRetries: 1, initialDelayMs: 1000 },
       "RateLimit:Reset"
     );
   } catch (error) {

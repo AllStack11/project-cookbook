@@ -9,7 +9,7 @@ const logger = createLogger("LLM:BudgetGuard");
  */
 async function withTimeout<T>(
   promise: Promise<T>,
-  timeoutMs: number = 2500
+  timeoutMs: number = 4000
 ): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)
@@ -74,7 +74,7 @@ async function getCurrentSpendUsd(monthKey: string): Promise<number> {
   try {
     const value = await retryWithBackoff(
       () => withTimeout(kv.get<number>(spendKey)),
-      { maxRetries: 1, initialDelayMs: 100 },
+      { maxRetries: 1, initialDelayMs: 1000 },
       "BudgetGuard:Get"
     );
     if (typeof value === "number") return value;
@@ -145,7 +145,7 @@ export async function recordActualSpend(
         await withTimeout(kv.expire(spendKey, monthlyTtlSeconds));
         return next;
       },
-      { maxRetries: 1, initialDelayMs: 100 },
+      { maxRetries: 1, initialDelayMs: 1000 },
       "BudgetGuard:Record"
     );
 
