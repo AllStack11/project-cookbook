@@ -13,7 +13,7 @@ const INITIAL_BACKOFF_MS = 750;
 const OPENROUTER_BASE_URL =
   process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
 const OPENROUTER_MAX_OUTPUT_TOKENS = Number(
-  process.env.LLM_MAX_OUTPUT_TOKENS || 2000
+  process.env.LLM_MAX_OUTPUT_TOKENS || 3000
 );
 const OPENROUTER_TIMEOUT_MS = Number(process.env.LLM_REQUEST_TIMEOUT_MS || 25000);
 

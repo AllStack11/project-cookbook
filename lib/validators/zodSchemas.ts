@@ -14,9 +14,9 @@ export const instructionSchema = z.object({
 
 export const nutritionSchema = z.object({
   calories: z.number().finite().positive().max(5000).optional(),
-  protein: z.string().trim().refine(isValidNutritionMacroValue).optional(),
-  carbs: z.string().trim().refine(isValidNutritionMacroValue).optional(),
-  fat: z.string().trim().refine(isValidNutritionMacroValue).optional(),
+  protein: z.string().trim().optional(),
+  carbs: z.string().trim().optional(),
+  fat: z.string().trim().optional(),
 });
 
 export const recipeSchema = z.object({

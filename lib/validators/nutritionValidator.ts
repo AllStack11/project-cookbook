@@ -19,8 +19,9 @@ export function isValidNutritionMacroValue(value: string): boolean {
   }
 
   // Regex to match a number and an optional unit (e.g., "10g", "10 g", "10 grams", "~10g")
+  // More permissive to handle LLM variations
   const match = normalized.match(
-    /^[^0-9]*\s*(\d+(?:\.\d+)?)\s*([a-z]+)?\s*.*$/i
+    /^[^\d]*\s*(\d+(?:[.,]\d+)?)\s*([a-z]+)?.*$/i
   );
   if (!match) {
     return false;

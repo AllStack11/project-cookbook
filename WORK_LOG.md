@@ -28,6 +28,8 @@ Each entry should include:
 
 ## Log Entries
 
+- 2026-03-17, Enhancement, Made nutrition validation non-blocking in zodSchemas.ts, Ensured minor nutrition formatting errors don't fail recipe extraction.
+- 2026-03-17, Optimization, Hardened JSON repair logic and increased LLM_MAX_OUTPUT_TOKENS to 3000, Improved resilience against truncated responses and parsing failures.
 - 2026-03-17, Bug Fix, Removed unused variable VALID_NUTRITION_UNITS in nutritionValidator.ts, Resolved build error on Vercel.
 - 2026-03-17, UI Enhancement, Replaced seconds counter with a themed progress bar in LoadingState component, Improved visual progress tracking and loading UX.
 - 2026-03-17, UI Fix, Fixed overlapping "Did You Know" badge on mobile in LoadingState component, Improved readability and UI consistency on mobile devices.

@@ -30,8 +30,14 @@ export function parseRecipeFromLLMResponse(response: string): ParseResult {
     const rawParsed = parseLLMJson(cleaned);
 
     // Pre-sanitize nutrition to prevent Zod from failing the entire recipe on a single macro error
+    // If sanitization removes all macro fields, we remove the nutrition object entirely
     if (rawParsed && typeof rawParsed === "object" && (rawParsed as any).nutrition) {
-      (rawParsed as any).nutrition = sanitizeNutrition((rawParsed as any).nutrition);
+      const sanitized = sanitizeNutrition((rawParsed as any).nutrition);
+      if (sanitized) {
+        (rawParsed as any).nutrition = sanitized;
+      } else {
+        delete (rawParsed as any).nutrition;
+      }
     }
 
     // Strict validation using Zod
@@ -320,10 +326,20 @@ function attemptRepairTruncatedJSON(text: string): string | null {
       repaired += '"';
     }
 
-    // 2. Remove trailing comma if it exists (very common truncation point)
-    repaired = repaired.replace(/,\s*$/, "");
+    // 2. Remove trailing comma or colon if it exists (very common truncation point)
+    repaired = repaired.replace(/[,,:]\s*$/, "");
 
-    // 3. Close open arrays/objects in reverse order
+    // 3. Remove partial key/value if it ends with a quote but no colon
+    if (repaired.endsWith('"')) {
+      // Check if it's a key without a value: "key"
+      const lastQuoteIndex = repaired.lastIndexOf('"', repaired.length - 2);
+      const afterLastQuote = repaired.substring(lastQuoteIndex + 1, repaired.length - 1);
+      if (!afterLastQuote.includes(":") && lastQuoteIndex !== -1) {
+        repaired = repaired.substring(0, lastQuoteIndex).trim().replace(/,$/, "");
+      }
+    }
+
+    // 4. Close open arrays/objects in reverse order
     while (stack.length > 0) {
       const last = stack.pop();
       if (last === "{") repaired += "}";
