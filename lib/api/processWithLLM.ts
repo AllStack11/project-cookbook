@@ -37,7 +37,7 @@ export async function processContentWithLLM(
   sourceUrl: string,
   overallStart: number,
   request: NextRequest,
-  isSuspicious: boolean
+  isSuspicious: boolean,
 ): Promise<NextResponse> {
   const requestCount = await getRequestCount(ip);
 
@@ -85,7 +85,7 @@ export async function processContentWithLLM(
           {
             attemptType,
             model,
-          }
+          },
         );
         modelErrors.push({
           attemptType,
@@ -146,7 +146,7 @@ export async function processContentWithLLM(
           errorCode,
           errorClass,
           statusCode,
-          escalatedToPaid: escalatedToFallback,
+          escalatedToPaid: !!escalatedToFallback,
         });
         logger.warn("Model attempt failed, trying next candidate", {
           model,
@@ -155,7 +155,7 @@ export async function processContentWithLLM(
           errorCode,
           errorClass,
           statusCode,
-          escalatedToPaid,
+          escalatedToFallback,
         });
       }
     }
@@ -196,7 +196,7 @@ export async function processContentWithLLM(
           "AI extraction is temporarily unavailable right now. Please try again shortly.",
         errorCode: ErrorCode.INTERNAL_ERROR,
       },
-      { status: StatusCode.SERVICE_UNAVAILABLE }
+      { status: StatusCode.SERVICE_UNAVAILABLE },
     );
   }
 
@@ -213,10 +213,11 @@ export async function processContentWithLLM(
         validationError: parseResult.validationError,
         parseError: parseResult.parseError,
         error: parseResult.error,
-      }
+      },
     );
 
-    const correctionReason = parseResult.validationError || parseResult.error || "Invalid JSON";
+    const correctionReason =
+      parseResult.validationError || parseResult.error || "Invalid JSON";
     const correctionPrompt = `The previous JSON response was invalid according to the expected format.
 Errors:
 ${correctionReason}
@@ -229,10 +230,10 @@ ${llmResponse.content}`;
       const correctionLLMResponse = await extractRecipe(
         content,
         correctionPrompt,
-        modelUsed
+        modelUsed,
       );
       const correctedParseResult = parseRecipeFromLLMResponse(
-        correctionLLMResponse.content
+        correctionLLMResponse.content,
       );
 
       if (correctedParseResult.success) {
@@ -259,7 +260,7 @@ ${llmResponse.content}`;
         error: parseResult.noRecipeReason || "No recipe found in the content",
         errorCode: ErrorCode.NO_RECIPE_FOUND,
       },
-      { status: StatusCode.BAD_REQUEST }
+      { status: StatusCode.BAD_REQUEST },
     );
   }
 
@@ -275,7 +276,7 @@ ${llmResponse.content}`;
         errorCode: ErrorCode.VALIDATION_FAILED,
         details: parseResult.validationError,
       },
-      { status: StatusCode.INTERNAL_SERVER_ERROR }
+      { status: StatusCode.INTERNAL_SERVER_ERROR },
     );
   }
 
@@ -293,7 +294,7 @@ ${llmResponse.content}`;
       recipe,
       content,
       modelUsed,
-      validation
+      validation,
     );
     if (fallbackResult instanceof NextResponse) return fallbackResult;
     recipe = fallbackResult;
@@ -321,7 +322,7 @@ ${llmResponse.content}`;
       region: request.headers.get("x-vercel-ip-country-region") || undefined,
       isSuspicious,
     },
-    sourceUrl || undefined
+    sourceUrl || undefined,
   );
 
   await incrementRateLimit(ip);
@@ -356,7 +357,7 @@ async function attemptFallback(
   recipe: Recipe,
   content: string,
   model: string,
-  validation: ReturnType<typeof validateRecipe>
+  validation: ReturnType<typeof validateRecipe>,
 ): Promise<Recipe | NextResponse> {
   logger.warn("Recipe validation failed, entering fallback mode", {
     errors: validation.errors,
@@ -371,15 +372,19 @@ async function attemptFallback(
   const fallbackPrompt = buildFallbackPrompt(
     recipe,
     content.substring(0, 1000),
-    missingFields
+    missingFields,
   );
 
   logger.info("Calling fallback LLM generation...");
   try {
-    const fallbackResponse = await extractRecipe(content, fallbackPrompt, model);
+    const fallbackResponse = await extractRecipe(
+      content,
+      fallbackPrompt,
+      model,
+    );
 
     const fallbackParseResult = parseRecipeFromLLMResponse(
-      fallbackResponse.content
+      fallbackResponse.content,
     );
     if (fallbackParseResult.success) {
       const fallbackRecipe = fallbackParseResult.recipe!;
@@ -397,7 +402,7 @@ async function attemptFallback(
         error: "Could not extract or generate a valid recipe",
         errorCode: ErrorCode.NO_RECIPE_FOUND,
       },
-      { status: StatusCode.BAD_REQUEST }
+      { status: StatusCode.BAD_REQUEST },
     );
   }
 }
