@@ -13,7 +13,7 @@ const logger = createLogger("Utils:RateLimiter");
  */
 async function withTimeout<T>(
   promise: Promise<T>,
-  timeoutMs: number = 4000
+  timeoutMs: number = 1000
 ): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)

@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 import { createLogger } from "@/lib/utils/logger";
 import { checkLLMProviderHealth } from "@/lib/llm/provider";
 import { selectModelCandidates } from "@/lib/llm/modelSelector";
+import { kv } from "@vercel/kv";
 
 const logger = createLogger("API:HealthCheck");
 
 export async function GET() {
+  // Pinging KV database to prevent auto-archiving (keep-alive heartbeat)
+  try {
+    await kv.get("healthcheck:ping");
+  } catch (e) {
+    logger.warn("KV keep-alive ping failed", { error: e });
+  }
+
   const models = selectModelCandidates({
     contentLength: 0,
     sourceType: "healthcheck",

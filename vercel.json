@@ -15,5 +15,11 @@
       "source": "/api/(.*)",
       "destination": "/api/$1"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/health/llm",
+      "schedule": "0 0 * * *"
+    }
   ]
 }

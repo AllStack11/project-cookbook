@@ -16,10 +16,10 @@ export const TTL_DEFAULT = TTL_BLOG;
  */
 async function withTimeout<T>(
   promise: Promise<T>,
-  timeoutMs: number = 4000
+  timeoutMs: number = 1000
 ): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs)
+    setTimeout(() => reject(new Error("KV Operation Timeout")), timeoutMs),
   );
   return Promise.race([promise, timeoutPromise]);
 }
@@ -129,11 +129,10 @@ export async function getCachedRecipe(url: string): Promise<Recipe | null> {
     const recipe = await retryWithBackoff(
       () => withTimeout(kv.get<Recipe>(`recipe:${key}`)),
       {
-        maxRetries: 1,
-        initialDelayMs: 1000,
-        maxDelayMs: 2000,
+        maxRetries: 0,
+        initialDelayMs: 0,
       },
-      "Cache:Get"
+      "Cache:Get",
     );
     return recipe;
   } catch (error) {
@@ -149,7 +148,7 @@ export async function getCachedRecipe(url: string): Promise<Recipe | null> {
 export async function setCachedRecipe(
   url: string,
   recipe: Recipe,
-  ttl: number = TTL_DEFAULT
+  ttl: number = TTL_DEFAULT,
 ): Promise<void> {
   try {
     const key = generateCacheKey(url);
@@ -161,7 +160,7 @@ export async function setCachedRecipe(
         initialDelayMs: 1000,
         maxDelayMs: 2000,
       },
-      "Cache:Set"
+      "Cache:Set",
     );
   } catch (error) {
     logger.error("Cache set error", {
@@ -181,7 +180,7 @@ export async function invalidateCache(url: string): Promise<void> {
         maxRetries: 1,
         initialDelayMs: 1000,
       },
-      "Cache:Invalidate"
+      "Cache:Invalidate",
     );
   } catch (error) {
     logger.error("Cache invalidate error", { error, url });

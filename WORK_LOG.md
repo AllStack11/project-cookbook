@@ -28,6 +28,9 @@ Each entry should include:
 
 ## Log Entries
 
+- 2026-03-18, Optimization, Simplified model selector to a 2-tier system (Primary/Fallback) and updated fallback model, Refactored modelSelector.ts and processWithLLM.ts to reduce complexity, and set amazon/nova-micro-v1 as the new default fallback model.
+- 2026-03-18, Enhancement, Switched main LLM model to Llama 3.1 8B, Updated DEFAULT_MODEL_CHAIN to use meta-llama/llama-3.1-8b-instruct as the primary model via OpenRouter for improved extraction quality.
+- 2026-03-17, Optimization, Implemented KV keep-alive heartbeat and tightened timeouts, Added Vercel Cron job to prevent cache auto-archiving and adjusted timeouts to 1s with 0 retries on cache hit failure.
 - 2026-03-17, Bug Fix, Removed unused import in zodSchemas.ts, Resolved build error on Vercel.
 - 2026-03-17, Enhancement, Made nutrition validation non-blocking in zodSchemas.ts, Ensured minor nutrition formatting errors don't fail recipe extraction.
 - 2026-03-17, Optimization, Hardened JSON repair logic and increased LLM_MAX_OUTPUT_TOKENS to 3000, Improved resilience against truncated responses and parsing failures.

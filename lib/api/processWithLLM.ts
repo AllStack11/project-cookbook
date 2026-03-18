@@ -62,9 +62,9 @@ export async function processContentWithLLM(
   let llmResponse: LLMExtractionResponse | undefined;
   let modelUsed = "";
   let providerUsed = "";
-  let modelTierUsed: ModelAttemptType = "free_primary";
+  let modelTierUsed: ModelAttemptType = "primary";
   let freeAttemptFailedReason: string | undefined;
-  let allowPaidFallback = false;
+  let allowFallback = false;
   const modelErrors: Array<{
     attemptType: ModelAttemptType;
     model: string;
@@ -79,9 +79,9 @@ export async function processContentWithLLM(
     for (const attempt of attempts) {
       const { model, attemptType } = attempt;
 
-      if (attemptType === "paid_fallback" && !allowPaidFallback) {
+      if (attemptType === "fallback" && !allowFallback) {
         logger.info(
-          "Skipping paid fallback; free attempt did not fail with provider/runtime error",
+          "Skipping fallback; primary attempt did not fail with provider/runtime error",
           {
             attemptType,
             model,
@@ -90,7 +90,7 @@ export async function processContentWithLLM(
         modelErrors.push({
           attemptType,
           model,
-          reason: "paid_fallback_not_permitted",
+          reason: "fallback_not_permitted",
           escalatedToPaid: false,
         });
         continue;
@@ -131,11 +131,11 @@ export async function processContentWithLLM(
         const statusCode =
           error instanceof LLMProviderError ? error.statusCode : undefined;
         const errorClass = classifyLLMError(error);
-        const escalatedToPaid =
-          attemptType !== "paid_fallback" && errorClass === "provider_runtime";
+        const escalatedToFallback =
+          attemptType !== "fallback" && errorClass === "provider_runtime";
 
-        if (escalatedToPaid) {
-          allowPaidFallback = true;
+        if (escalatedToFallback) {
+          allowFallback = true;
           freeAttemptFailedReason = errorCode || "provider_runtime";
         }
 
@@ -146,7 +146,7 @@ export async function processContentWithLLM(
           errorCode,
           errorClass,
           statusCode,
-          escalatedToPaid,
+          escalatedToPaid: escalatedToFallback,
         });
         logger.warn("Model attempt failed, trying next candidate", {
           model,
@@ -346,7 +346,7 @@ ${llmResponse.content}`;
       processingTime: totalDuration,
       isFallback: recipe.isGenerated || recipe.isPartialFallback,
       fallbackTierUsed:
-        modelTierUsed === "paid_fallback" ? "paid_fallback" : "free_only",
+        modelTierUsed === "fallback" ? "fallback" : "primary_only",
       freeAttemptFailedReason,
     },
   });

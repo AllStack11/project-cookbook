@@ -248,7 +248,7 @@ export async function extractRecipeWithOpenRouter(
     };
 
     // OpenRouter-specific routing for free-tier traffic.
-    if (modelName === "openrouter/free" && options.attemptType === "free_primary") {
+    if (modelName === "openrouter/free") {
       requestPayload.extra_body = {
         models: ["openrouter/free"],
         route: "fallback",
