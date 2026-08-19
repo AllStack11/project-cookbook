@@ -76,10 +76,16 @@ Kept from v1, because these parts were genuinely well-built:
 Changed from v1:
 
 - **Model**: move off the free-tier `meta-llama/llama-3.1-8b-instruct` /
-  `amazon/nova-micro-v1` chain to a real quality-tier model (see
-  `stack-decision.md` — "good quality, cost-aware," not cheapest-possible).
-  Keep the OpenRouter gateway abstraction (`lib/llm/provider.ts`) — it's
-  provider-agnostic already, so this is a config change, not a rewrite.
+  `amazon/nova-micro-v1` chain to a large Workers AI text model (Llama 3.3
+  70B / Qwen 72B / GPT-OSS-120B / a DeepSeek-R1 distill — benchmark a couple
+  against real extraction cases and pick one; see `stack-decision.md`).
+  **Do not replace the current small model with another small model** — the
+  failure rate this overhaul exists to fix is a model-capability problem,
+  not a vendor problem. Keep the shape of the provider abstraction in
+  `lib/llm/provider.ts` (swap the OpenRouter HTTP call for a Workers AI
+  binding call, `env.AI.run(...)`) — the retry/error-classification logic
+  around it is still worth keeping, just pointed at a different call
+  underneath.
 - **`isGenerated` bug fix**: the current `RECIPE_JSON_SCHEMA` doesn't include
   `isGenerated` as a property, so a fallback prompt asking the model to "set
   isGenerated: true" is structurally impossible to fulfill, and the

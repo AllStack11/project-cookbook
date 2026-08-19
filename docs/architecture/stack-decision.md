@@ -26,7 +26,7 @@ free tier or close to it**:
 | R2 | 10GB storage, 1M Class A ops, 10M Class B ops/mo, **no egress fee** | Photos/PDFs won't come close for a friend group |
 | KV | Included in Workers plans | Extraction cache |
 | Queues | 10k ops/day free; 1M ops/mo on the $5 Workers Paid plan | OCR jobs + notification fan-out |
-| Workers AI | Usage-based, no dedicated free tier historically but cheap per-request | OCR pre-processing only, not the main extraction reasoning |
+| Workers AI | 10,000 Neurons/day free, cheap usage-based beyond that | OCR pre-processing *and* the extraction reasoning step (see below) |
 
 The one paid line item worth planning for is Workers Paid ($5/mo) once
 Queues volume or Workers AI usage exceeds free-tier — trivial for this use
@@ -120,34 +120,52 @@ this after friends are getting logged out constantly.
 **Fallback**: Auth.js (NextAuth) core also runs on edge runtimes and has
 community D1 adapters, if better-auth proves unstable in practice.
 
-### AI / extraction model: hybrid — Workers AI for OCR, external LLM for reasoning
+### AI / extraction model: Workers AI end-to-end, on a large-enough model
 
-**Decision**: split the extraction pipeline's AI usage in two:
+**Decision**: keep AI usage entirely inside Cloudflare — no external LLM
+vendor (no OpenRouter, no direct Anthropic/OpenAI). Workers AI does both
+jobs in the pipeline:
 
-1. **Workers AI vision models** (e.g. Moondream 3 or the Gemma vision line,
-   both of which explicitly support OCR/document parsing as of 2026) do the
-   *first pass* on photo and PDF sources — pull raw text out of an image of
-   a cookbook page, handwritten card, or PDF page. Cheap, fast, keeps large
-   image payloads inside Cloudflare instead of round-tripping them to an
-   external API.
-2. An **external frontier-tier LLM** does the actual structured extraction
-   reasoning (raw text → validated `Recipe` JSON) for every source type,
-   photo/PDF included after OCR. Keep the existing provider-agnostic
-   OpenRouter gateway (`lib/llm/provider.ts` et al. — it already has solid
-   retry/error-classification logic worth keeping) but **stop pointing it at
-   free-tier models**. "Good quality, cost-aware" means a real mid-to-upper
-   tier model (e.g. a current Claude or GPT-4-class model via OpenRouter, or
-   direct to Anthropic's API), not the `meta-llama/llama-3.1-8b-instruct` /
-   `amazon/nova-micro-v1` pairing the audit found in place today.
+1. **Vision models** (e.g. Moondream 3 or the Gemma vision line, both of
+   which explicitly support OCR/document parsing as of 2026) do the *first
+   pass* on photo and PDF sources — pull raw text out of an image of a
+   cookbook page, handwritten card, or PDF page.
+2. **A large text model** does the actual structured extraction reasoning
+   (raw text → validated `Recipe` JSON) for every source type, photo/PDF
+   included after OCR. Workers AI's catalog includes real quality options
+   beyond the 7B/8B tier — Llama 3.3 70B, Qwen 72B, GPT-OSS-120B, DeepSeek-R1
+   distills — pick one of those as the default, benchmark a couple against
+   real extraction cases during Phase 2 of `BUILD_GUIDE.md`, and **do not
+   default to a 7B/8B-class model** (Llama 3.1 8B, Mistral 7B, etc.) for the
+   reasoning step — that's the same size class as the
+   `meta-llama/llama-3.1-8b-instruct` model already in place today, which is
+   what's producing the failure rate this overhaul exists to fix. Using a
+   small model on a different vendor doesn't fix that; it just moves it.
+3. **Structured output is preserved.** Workers AI supports OpenAI-compatible
+   JSON mode with a schema declaration, so the existing strict
+   `RECIPE_JSON_SCHEMA` approach (`additionalProperties: false`, etc. — see
+   `extraction-pipeline.md`) ports over as-is; the security value of
+   bounding what the model can emit doesn't depend on which vendor is behind
+   it.
 
-**Why not run the reasoning step on Workers AI too**: Workers AI's open-weight
-catalog is good for OCR and cheap utility tasks, but for the actual "read
-messy, adversarial, sometimes-injection-laden web content and produce a
-correct structured recipe" task, model quality directly determines the
-failure rate you explicitly asked to bring down. This is the one place where
-"cost-aware" should lose to "good quality" if they conflict — it's a handful
-of friends' worth of extraction volume, so even a materially more expensive
-per-call cost is a small absolute number.
+**Cost**: Workers AI includes a free daily allowance (10,000 Neurons/day,
+Cloudflare's unified inference-cost unit across model types) — at
+friend-group extraction volume this should realistically land at **$0/month**
+for the reasoning step, same conclusion as the rest of the stack. Even
+sustained paid usage bills in fractions of a cent per unit beyond the free
+pool, and it's happening inside the Workers Paid subscription already
+budgeted for Browser Rendering, not a new line item.
+
+**Rejected**: an external frontier-tier LLM (Claude/GPT-4-class via
+OpenRouter or direct) was considered — cost analysis showed it would also
+land under $5/month at this volume, so cost wasn't the deciding factor
+either way. Staying entirely on Workers AI wins on simplicity (one fewer
+vendor, no API key to manage, no egress to an external API) as long as the
+model-size discipline above is followed. If a large Workers AI model turns
+out not to hit the target failure rate in practice during Phase 2, revisit
+this — the `lib/llm/provider.ts`-style abstraction should stay
+provider-agnostic enough that swapping the reasoning step back to an
+external model later is a config change, not a rewrite.
 
 ### Push notifications: Web Push (VAPID), no Firebase
 

@@ -28,12 +28,17 @@ this repo already uses — just repointed from Neon/Postgres to D1/SQLite).
 Uploads (recipe images, OCR photos, PDFs) go to **R2**. The extraction
 pipeline cache moves from Vercel KV to **Cloudflare KV**. Background work
 (OCR/PDF processing, notification fan-out) runs through **Cloudflare
-Queues**. Auth is Google OAuth via **better-auth**. Extraction reasoning
-stays on an external frontier-tier LLM (through the existing OpenRouter
-gateway, upgraded off the free-tier models) with **Workers AI vision models**
-doing cheap OCR pre-processing for photo/PDF sources. Push notifications use
-Web Push/VAPID, which runs natively on Workers via the standard Web Crypto
-API (no Node-only `web-push` package, no Firebase).
+Queues**. Auth is Google OAuth via **better-auth**. AI stays entirely inside
+Cloudflare: **Workers AI** vision models do OCR pre-processing for
+photo/PDF sources, and a **large (not 7B/8B-tier) Workers AI text model**
+does the extraction reasoning step for every source — no external LLM
+vendor. Push notifications use Web Push/VAPID, which runs natively on
+Workers via the standard Web Crypto API (no Node-only `web-push` package,
+no Firebase).
+
+Realistic total infra + AI cost at friend-group scale: **$0–5/month** —
+free tiers cover hosting/D1/R2/KV/Queues/Workers AI, with the $5 Workers
+Paid plan the only likely line item (needed for Browser Rendering headroom).
 
 Everything currently built around anonymous public traffic — per-IP rate
 limiting, VPN/CAPTCHA detection, AdSense, Stripe, the freemium tier system —
