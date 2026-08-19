@@ -179,6 +179,13 @@ Attribution links to original sources; users should only extract recipes
 they have permission to use. This guidance still applies in v2 even though
 the audience is now private, not public.
 
+## Branching & Merging
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) — one branch per unit of work,
+cut from current `main`, squash-merged, deleted after merge. **A merged
+branch is finished — never push follow-up commits to it.** Follow-up work
+always gets a new branch from the then-current `main`.
+
 ## Work Log
 
 All project changes, decisions, and progress should be tracked in
