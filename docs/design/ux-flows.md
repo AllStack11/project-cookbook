@@ -4,6 +4,20 @@ Screens and flows for the PWA, derived from `REQUIREMENTS.md`. This is
 functional scope, not visual design — layout/styling is a build-time detail,
 not an architecture decision.
 
+## Flow: joining (new friend onboarding)
+
+1. An existing member generates an invite from their Profile screen (or a
+   simple "invite a friend" action) and shares the resulting link.
+2. The invite link opens a landing page with a single "Sign in with Google"
+   action — no separate signup form, since the account *is* the Google
+   account.
+3. On successful Google auth, the invite code carried in the link gates
+   account creation (see `docs/architecture/stack-decision.md`). If the code
+   is invalid/already used/expired, show a clear "this invite isn't valid
+   anymore, ask for a new one" message rather than a generic auth error.
+4. On success, land directly in the app (Pool tab) — no separate onboarding
+   wizard needed for a friend-group app this size.
+
 ## Navigation shell (installed PWA)
 
 Bottom nav (mobile-first, since this is meant to be used standing in a

@@ -36,7 +36,14 @@ Input (URL | pasted text | uploaded photo | uploaded PDF)
 6. Validation + confidence scoring (kept from v1, with the isGenerated fix)
   │
   ▼
-7. Cache + persist + notify (KV cache, D1 write, Queue notification fan-out)
+7. Image fetch: if the recipe has a source image (JSON-LD `image`, YouTube
+   thumbnail, OCR'd photo itself, etc.), download it and store in R2 —
+   recipe images are never hotlinked to the original source (confirmed
+   decision; see `data-model.md`), so the recipe card doesn't break when
+   the source page changes or blocks hotlinking
+  │
+  ▼
+8. Cache + persist + notify (KV cache, D1 write, Queue notification fan-out)
 ```
 
 ## Per-source acquisition strategy

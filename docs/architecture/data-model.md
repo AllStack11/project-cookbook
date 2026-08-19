@@ -33,6 +33,21 @@ hand-roll those, they're listed below only so the relationships are clear.
   is limited to cook-log/rating/notes writes, which the schema itself makes
   structurally impossible to confuse with editing the recipe (they're
   different tables).
+- **Recipes are never deleted.** Confirmed: once added, a recipe stays in
+  the database permanently — no delete endpoint, no soft-delete flag. This
+  sidesteps the whole "what happens to cook-log history when a recipe is
+  removed" question by construction: there's no removal to design around.
+  If a bad/garbage extraction needs to stop showing up, that's an edit
+  (fix it, since only the adder can edit) or, at most, a future "hide from
+  pool" flag — not deletion. Don't build a delete endpoint speculatively.
+- **Recipe images are downloaded into R2**, not hotlinked to the source.
+  The extraction pipeline fetches the source image and stores a copy
+  (`recipes.imageR2Key`) so the recipe card doesn't break if the source
+  page later changes, deletes the image, or blocks hotlinking — see
+  `extraction-pipeline.md`.
+- **Notes can only be deleted by their own author** — no moderation
+  capability for the recipe owner over other people's notes. Simple,
+  matches the attribution model.
 
 ## Schema
 
@@ -49,6 +64,23 @@ import { sql } from "drizzle-orm";
 // --- Auth (owned by better-auth's generator; shown for reference only) ---
 // user, session, account, verification — see better-auth-cloudflare docs.
 // `user.id` is what every table below calls `userId`.
+
+// --- Invites (the access-control gate on top of Google OAuth) ---
+
+export const invites = sqliteTable("invites", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  code: text("code").notNull().unique(), // random token, embedded in the invite URL
+  createdByUserId: text("created_by_user_id").notNull(), // FK -> user.id
+  usedByUserId: text("used_by_user_id"), // FK -> user.id, set once redeemed
+  usedAt: integer("used_at", { mode: "timestamp" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }), // null = no expiry
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+// Single-use per row: `usedByUserId IS NULL` = still redeemable. Any
+// existing member can create one (no admin role in this app) — see
+// api-design.md and stack-decision.md's auth section for the redemption flow.
 
 // --- Recipes ---
 
@@ -171,6 +203,8 @@ export const pushSubscriptions = sqliteTable("push_subscriptions", {
 - `notifications(user_id, read_at)` — the in-app feed's main query is "unread
   notifications for this user"
 - `uploads(user_id, status)`
+- `invites(code)` (already unique, but this is the hot lookup during
+  redemption), `invites(created_by_user_id)`
 
 ## Notification fan-out relationship
 

@@ -11,8 +11,19 @@ during implementation against the `data-model.md` shapes.
 ## Auth
 
 Handled by better-auth's own route handler mount (`app/api/auth/[...all]`) —
-Google OAuth flow, session cookie management. Nothing custom to build here
-beyond configuration.
+Google OAuth flow, session cookie management. Account creation is gated by
+an invite code via a better-auth hook, not a custom route — see
+`stack-decision.md`'s auth section.
+
+## Invites
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/invites` | Any authenticated user can generate one (no admin role in this app). Returns the code/link to share. |
+| `GET` | `/api/invites` | List invites *you've* created, with status (unused/used/expired) — lets you see whether a friend has redeemed theirs yet. |
+
+Redemption itself isn't a REST call against this resource — it happens as
+part of the Google OAuth sign-up flow (see `stack-decision.md`).
 
 ## Recipes
 
@@ -22,7 +33,10 @@ beyond configuration.
 | `GET` | `/api/recipes/:id` | Full recipe detail, including cook-log summary, rating rollup, notes. |
 | `POST` | `/api/recipes` | Create from a URL/text/upload — kicks off the extraction pipeline (`extraction-pipeline.md`). For photo/PDF, this returns immediately with an `uploads` row in `pending` state, not a finished recipe. |
 | `PATCH` | `/api/recipes/:id` | Edit core fields. **403 unless `session.userId === recipe.addedByUserId`** — this check is the entire enforcement of the "only the adder can edit" rule from the requirements; get it right. |
-| `DELETE` | `/api/recipes/:id` | Same ownership check as PATCH. Consider soft-delete if cook-logs/notes reference it — decide during build whether orphaned cook-log history should survive a recipe deletion. |
+
+**No `DELETE /api/recipes/:id`.** Confirmed: recipes are never deleted —
+they stay in the database permanently once added (`data-model.md`). Don't
+build a delete endpoint.
 
 ## Cook log
 
@@ -38,7 +52,7 @@ beyond configuration.
 |---|---|---|
 | `POST` | `/api/recipes/:id/notes` | Add a note. Any authenticated user, not just the adder. |
 | `GET` | `/api/recipes/:id/notes` | List notes on a recipe. |
-| `DELETE` | `/api/notes/:id` | Only the note's own author (or the recipe owner?) can delete — decide during build; not specified in requirements. |
+| `DELETE` | `/api/notes/:id` | **403 unless `session.userId === note.userId`** — only the note's own author can delete it; the recipe owner has no moderation right over other people's notes. |
 
 ## Tags / food picker
 

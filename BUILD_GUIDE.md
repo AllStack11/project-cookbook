@@ -50,11 +50,19 @@ migration step to design either.
    known #4203 bug noted in `stack-decision.md` before building anything on
    top of auth — a flaky session layer will look like bugs everywhere else
    if it's not verified first.
-4. Basic profile screen (view/edit own name+avatar) — the smallest possible
-   thing that proves auth + D1 + a write path all work end to end.
+4. Build the `invites` table + the `user.create` hook that gates account
+   creation on a valid, unused, unexpired invite code (`stack-decision.md`,
+   `data-model.md`). Test the rejection path explicitly (invalid/used/
+   expired code) — this is the entire access-control boundary for the app,
+   worth being sure it actually blocks before moving on.
+5. Basic profile screen (view/edit own name+avatar, generate an invite
+   link) — the smallest possible thing that proves auth + D1 + a write path
+   all work end to end.
 
-**Exit criteria**: you can log in with Google, see your profile, and it
-persists across a page reload without getting logged out.
+**Exit criteria**: you can log in with Google via a valid invite, see your
+profile, generate an invite for a second test account, confirm an
+*invalid* invite code is rejected, and confirm your session persists across
+a page reload without getting logged out.
 
 ## Phase 2 — Extraction pipeline rewrite
 
