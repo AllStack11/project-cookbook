@@ -56,3 +56,11 @@ Thumbs.db
 logs
 *.log
 .claude/settings.local.json
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

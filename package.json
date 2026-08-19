@@ -9,8 +9,8 @@
     "unrs-resolver": "1.7.11"
   },
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
+    "dev": "next dev",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
@@ -19,7 +19,11 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "validate-deploy": "node scripts/validate-deploy.js",
-    "pre-deploy": "npm run type-check && npm run lint && node scripts/validate-deploy.js"
+    "pre-deploy": "npm run type-check && npm run lint && node scripts/validate-deploy.js",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -38,6 +42,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "1.20.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -59,6 +64,7 @@
     "postcss": "^8.5.6",
     "prettier": "^3.2.0",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wrangler": "4.124.0"
   }
 }

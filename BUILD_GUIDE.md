@@ -56,6 +56,27 @@ migration step to design either.
    `stack-decision.md`. If it doesn't work cleanly on the current codebase,
    that's the moment to decide on the Hono/Vite fallback, before more work
    is built on top of the assumption.
+
+   **Already validated (2026-08-19)**: `npx @opennextjs/cloudflare migrate`
+   scaffolds `wrangler.jsonc`, `open-next.config.ts`, `.dev.vars`,
+   `public/_headers`, and the `preview`/`deploy`/`upload`/`cf-typegen`
+   package.json scripts cleanly against this codebase — no manual
+   reverse-engineering needed. The build itself succeeds end-to-end
+   (`Worker saved in .open-next/worker.js`) **except** for one real,
+   diagnosed blocker: `lib/extractors/instagramExtractor.ts`'s dynamic
+   `import("puppeteer-core")` fails to bundle for the Workers runtime
+   (esbuild can't resolve puppeteer-core's internal BiDi module path).
+   Confirmed via a throwaway stub that this is the *only* blocker — with it
+   stubbed out, the build completes cleanly. This isn't adapter risk
+   materializing; it's confirmation that v1's Puppeteer-based Instagram
+   extractor genuinely cannot ship on Workers, which is exactly why
+   `extraction-pipeline.md` already replaces it with Cloudflare Browser
+   Rendering in Phase 2 — no fallback-plan decision needed, just don't
+   expect a clean build until that replacement lands. `wrangler.jsonc` in
+   this repo already has the merged app bindings (D1/KV/R2/Queues/AI,
+   `env.staging`/`env.production`) layered on top of the migrate tool's
+   output — resource IDs are placeholders (`TODO-...`) until step 3-4 below
+   actually provision them.
 7. Set up deploys via **GitHub Actions running `wrangler deploy`** (not
    Cloudflare's native Git integration, and not manual deploys) — a
    workflow that runs `@opennextjs/cloudflare build` then `wrangler
