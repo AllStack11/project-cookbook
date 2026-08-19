@@ -31,8 +31,19 @@ expected to be **removed**, not ported. Confirm before build: correct?
 - **Model priority**: Good quality, but still cost-aware — not "cheapest possible"
   (current: free-tier OpenRouter models), not "cost-no-object" either. A capable
   model with sane spend controls.
-- **Sources**: Same source types as today at minimum — YouTube, blog/web,
-  Instagram, pasted text. (Confirm: any sources to add/drop?)
+- **Sources**: Keep all current source types, and expand/add more.
+  - Currently *validated* (URL routing recognizes them): YouTube, blog/web,
+    Instagram, TikTok, Twitter/X, Facebook, Pinterest, Reddit, pasted text.
+  - Currently *actually extracted well*: only YouTube (transcript/API),
+    generic blog/web (incl. JSON-LD structured recipes), and Instagram
+    (headless-browser scrape). TikTok/Twitter/Facebook/Pinterest/Reddit fall
+    through to the generic web scraper today, which is unreliable on
+    JS-heavy/auth-walled platforms (same class of problem Instagram needed
+    Puppeteer to solve) — these need real platform-specific extraction as
+    part of the overhaul, not just a "keep as-is."
+  - New source types to add: **photo/OCR** of a physical recipe (cookbook
+    page, handwritten card) and **PDF import** (printed recipe, emailed
+    newsletter, etc.), in addition to fixing the platforms above.
 - Open question for the architecture phase: which AI provider/models, given
   "good quality but cost-aware."
 
@@ -49,21 +60,23 @@ expected to be **removed**, not ported. Confirm before build: correct?
 - **Ratings**: 1–5 stars, at two levels:
   - Per-cook rating (this specific time I made it)
   - Aggregate rating (rolls up from cook history)
-- **Friend notes**: attached to cook events (e.g. "made it with less salt,
-  still too spicy") — TBD whether a general note can also live on the recipe
-  itself independent of a cook event. Assume yes unless corrected.
-- Feed/visibility: friends can see each other's cook history, ratings, and
-  notes on shared recipes. (Assume a shared pool of recipes visible to the
-  whole friend group, not per-user-private libraries — confirm.)
+- **Notes**: live on the recipe itself (not per-cook-event). One note surface
+  per recipe that friends contribute to.
+- **Recipe pool**: single shared pool, accessible to everyone on the
+  platform. Each recipe is individually labeled/attributed (i.e. tagged with
+  who added/extracted it), but not siloed into private per-user libraries —
+  anyone can see, cook-log, rate, and note any recipe in the pool.
+  - **Edit rights**: only the original adder can edit a recipe's core
+    content (title/ingredients/steps). Everyone else can rate, cook-log, and
+    add notes, but can't modify the recipe itself.
 
 ## 5. Cuisine / Food Picker
 
 - A decision-helper tool: "what should I eat/cook" when undecided.
-- Draws from the saved recipe library (and/or cuisine/mood filters).
+- **Input signal: tags.** Recipes are tagged (cuisine, meal type, etc.) and
+  the picker filters/suggests from the shared pool by tag.
 - **Scope resolved**: standalone tool, not tied to a restaurant flow (restaurant
   features cut entirely — see below).
-- Open question: what inputs drive a suggestion — cuisine tag, mood, time
-  available, ingredients on hand, what hasn't been cooked recently? TBD.
 
 ## 6. Restaurant Features — CUT
 
@@ -85,22 +98,28 @@ expected to be **removed**, not ported. Confirm before build: correct?
   plain unstyled responsive site, not a native app (React Native/etc.) — a PWA
   built from the web codebase.
 
----
+## 9. Notifications
 
-## Open questions still worth answering before/while doing architecture
-
-1. Shared recipe pool vs. per-person private libraries with sharing?
-2. What signals drive the cuisine/food picker's suggestions?
-3. Do notes live only on cook events, or also as a standalone note on the
-   recipe itself?
-4. Any sources to add/drop from extraction (e.g. TikTok, Pinterest, generic
-   text paste — current app already handles several social platforms)?
-5. Any notifications wanted (e.g. "Alex just cooked something you saved")?
+- **Triggers**:
+  - Cook-log activity on a recipe you added or saved
+  - New recipe added to the shared pool
+  - Rating or note left on a recipe you added
+- **Channel**: both push notifications (via the installable PWA) and an
+  in-app notification feed.
 
 ---
+
+## Requirements gathering: complete
+
+All open questions from the previous draft are now resolved. This document
+reflects the full agreed feature scope for the overhaul.
 
 ## Next step
 
-Once this is confirmed/amended, move to the architecture discussion:
-Cloudflare (Workers, D1/KV/R2, Workers AI) vs. alternatives, evaluated against
-the requirements above.
+Move to the architecture discussion: Cloudflare (Workers, D1/KV/R2, Workers
+AI, Queues for notification fan-out) vs. alternatives, evaluated against the
+requirements above — in particular: relational data for the social
+cook-log/ratings/notes (D1 vs. alternatives), object storage for
+photos/PDFs (R2), push notification delivery, PWA hosting, and the AI
+provider/model for a "good quality, cost-aware" extraction pipeline that also
+needs to support photo/OCR and PDF inputs (multimodal, not just text).
