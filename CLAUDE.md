@@ -1,399 +1,197 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
-## Project Overview
+## ⚠️ Project status: mid-overhaul
 
-**Just The Recipe** is a Next.js web application that extracts clean, structured recipes from various sources (YouTube videos, blog posts, social media) using LLM-powered content parsing. The app follows a stateless, serverless architecture with a freemium business model (ad-supported free tier + premium subscription).
+This repo is in the middle of a **complete architecture overhaul and pivot**:
+from a public, ad-supported freemium product to a **private app for the
+owner and a small friend group**, hosted on Cloudflare instead of Vercel,
+with a rebuilt extraction backend and new social features (user profiles,
+shared recipe pool, cook-log/ratings/notes, a cuisine/food picker,
+notifications).
 
-## Tech Stack
+- **The code in this repo right now is still v1** — Next.js on Vercel,
+  OpenRouter for extraction, no auth, anonymous-IP rate limiting. Everything
+  below the overhaul notice describes *that* current code accurately (it was
+  audited and corrected as of this overhaul — see git history around
+  "extraction system audit" for the full findings).
+- **The target architecture is documented, not yet built.** Before making
+  any change related to the overhaul, read these in order:
+  1. [`REQUIREMENTS.md`](./REQUIREMENTS.md) — the full feature scope, and why
+     each decision was made.
+  2. [`docs/architecture/README.md`](./docs/architecture/README.md) — the
+     technical design (stack, data model, extraction pipeline redesign,
+     notifications, API surface).
+  3. [`docs/design/ux-flows.md`](./docs/design/ux-flows.md) — screens/flows.
+  4. [`BUILD_GUIDE.md`](./BUILD_GUIDE.md) — the phased implementation plan.
+- If you're asked to work on something covered by the overhaul, follow those
+  docs, not the v1 description below. If you're asked to fix a bug in the
+  still-live v1 app before the cutover, the sections below are accurate for
+  that.
+- **Do not silently mix v1 and v2 assumptions** — e.g. don't add anonymous-IP
+  rate limiting to new v2 code, and don't assume Cloudflare bindings exist in
+  code that's still running on Vercel. If it's unclear which world a task
+  belongs to, ask.
+
+---
+
+## Project Overview (v1 — current live code)
+
+**Just The Recipe** is a Next.js web application that extracts clean,
+structured recipes from various sources (YouTube videos, blog posts, social
+media) using LLM-powered content parsing. The current live version is a
+public, stateless, serverless app on Vercel with a freemium model (free tier
++ ad-supported). **This model is being retired** — see the overhaul notice
+above.
+
+## Tech Stack (v1 — current live code)
 
 - **Framework**: Next.js 14 with App Router (TypeScript)
 - **Styling**: Tailwind CSS
-- **LLM Integration**: Google Gemini API (gemini-2.5-flash-lite for cost efficiency and speed)
+- **LLM Integration**: OpenRouter gateway (OpenAI-compatible API), currently
+  configured with free-tier models (`meta-llama/llama-3.1-8b-instruct`
+  primary, `amazon/nova-micro-v1` fallback) — see `.env.example` for the
+  actual configured chain. *(Note: earlier versions of this doc described
+  Google Gemini directly; the app migrated to OpenRouter — see commit
+  `9eaf1d2`. If you find another doc or comment still referencing Gemini,
+  it's stale — fix it, don't trust it.)*
 - **Content Extraction**:
-  - `youtubei.js` for YouTube videos (hybrid approach with YouTube Data API v3 fallback)
-  - Cheerio for web scraping
-  - `puppeteer-core` + `@sparticuz/chromium` for Instagram (Vercel-compatible)
-- **Payment**: Stripe for subscriptions
-- **Ads**: Google AdSense
+  - `youtube-transcript` + direct timedtext endpoint + YouTube Data API v3
+    fallback, for YouTube
+  - Cheerio for generic web scraping, with JSON-LD `Recipe` structured-data
+    detection (currently extracted but not actually used to skip the LLM
+    call — a known gap, see the extraction pipeline audit)
+  - `puppeteer-core` + `@sparticuz/chromium` for Instagram
+  - TikTok/Twitter/Facebook/Pinterest/Reddit are URL-validated but fall
+    through to the generic scraper — not reliably extracted today
+- **Database**: Drizzle ORM against Neon Postgres, used only for anonymous
+  extraction analytics (no user accounts exist in v1)
+- **Caching**: Vercel KV, URL-based
 - **Hosting**: Vercel (serverless functions + CDN)
-- **Caching**: Redis or Vercel KV (URL-based caching for cost optimization)
-- **Analytics**: Plausible Analytics or Google Analytics
+- **Payment/Ads**: Stripe + Google AdSense (planned/partial, tied to the
+  freemium model being retired)
 
 ## Development Commands
 
 ```bash
-# Install dependencies
 npm install
-
-# Run development server
 npm run dev
-
-# Build for production
 npm run build
-
-# Start production server
 npm start
-
-# Run linting
 npm run lint
-
-# Run type checking
 npm run type-check
-
-# Deployment validation
-npm run validate-deploy    # Full pre-deployment checks
-npm run pre-deploy         # Type-check + lint + validate
+npm run validate-deploy    # Vercel-specific pre-deploy checks
+npm run pre-deploy
 ```
 
-## Architecture & Key Concepts
+## Architecture & Key Concepts (v1)
 
 ### Request Flow
 
-1. User submits URL or pastes text content
-2. Serverless function fetches content (YouTube transcript, webpage HTML, etc.)
-3. Content is preprocessed to reduce token count (remove ads, navigation, comments)
-4. Content sent to LLM API with structured prompt for recipe extraction
-5. LLM response parsed into structured JSON format
-6. Recipe card rendered with ingredients, instructions, metadata
+1. User submits URL or pastes text content.
+2. Serverless function fetches content (YouTube transcript, webpage HTML,
+   etc.) — see `lib/extractors/`.
+3. Content is preprocessed to reduce token count — `lib/extractors/preprocessor.ts`.
+4. Content sent to the LLM via `lib/llm/provider.ts` with a structured-output
+   JSON schema.
+5. Response is parsed/validated — `lib/llm/responseParser.ts`,
+   `lib/validators/recipeValidator.ts`.
+6. Recipe card rendered.
 
-### Critical Cost Optimization Strategies
+### Cost Optimization (v1 — was central to a public freemium product; not the
+   organizing constraint for v2, see `docs/architecture/stack-decision.md`)
 
-**IMPORTANT**: Cost management is central to this project's sustainability. Always consider:
-
-1. **Caching First**: Check cache before making LLM API calls
-   - URL-based caching with Redis/Vercel KV
-   - 30-day TTL for blog posts, 7-day for social media
-   - Target: 40-60% cache hit rate
-
-2. **Token Optimization**: Minimize input tokens before LLM calls
-   - Strip ads, navigation, comments, footer content (50-70% reduction)
-   - YouTube: Extract only cooking/recipe portions using timestamps
-   - Maximum token limit: 3,000 tokens input
-
-3. **Model Selection**:
-   - Currently using gemini-2.5-flash-lite for all extractions
-   - Gemini offers competitive pricing with structured output support
-   - Future: Consider gemini-2.0-flash-thinking-exp for complex content requiring reasoning
-
-4. **Rate Limiting**:
-   - Free tier: 10 extractions/day per IP
-   - CAPTCHA after 3 rapid extractions
-   - Monitor for abuse patterns
+- URL-based caching (Vercel KV), 30-day blog / 7-day social TTLs.
+- Token budget truncation (`lib/utils/tokenCounter.ts`), max ~3,000 input
+  tokens.
+- Free-tier model selection, monthly spend cap (`lib/llm/budgetGuard.ts`) —
+  **note**: the pricing table in that file doesn't actually price either
+  model currently configured; the cap has been enforcing against a guessed
+  rate. Fix this if you touch budget logic before the v2 cutover.
+- Per-IP rate limiting (10/day free tier), VPN/CAPTCHA suspicion scoring.
+  **This entire category goes away in v2** — it exists only because v1 has
+  no authentication.
 
 ### Structured Recipe Format
 
-LLM responses should be parsed into this JSON structure:
-
-```typescript
-interface Recipe {
-  title: string;
-  description?: string;
-  servings?: number;
-  prepTime?: string;
-  cookTime?: string;
-  totalTime?: string;
-  ingredients: Array<{
-    item: string;
-    amount?: string;
-    unit?: string;
-  }>;
-  instructions: Array<{
-    step: number;
-    text: string;
-  }>;
-  notes?: string[];
-  sourceUrl?: string;
-  nutrition?: {
-    calories?: number;
-    protein?: string;
-    carbs?: string;
-    fat?: string;
-  };
-}
-```
+See `types/recipe.ts` for the canonical `Recipe` interface — ingredients,
+instructions, timing, nutrition, source metadata, confidence score. The v2
+data model (`docs/architecture/data-model.md`) extends this shape into a
+relational schema (recipes table + tags + cook-log + notes) rather than
+changing the core recipe fields.
 
 ### Validation & Quality Checks
 
-Always validate LLM extraction responses for:
-
-- Required fields present (ingredients, instructions)
-- Ingredients list has at least 2 items
-- Instructions list has at least 2 steps
-- No obvious hallucinations or placeholder text
-- Target accuracy: 95% successful extractions
+`lib/validators/recipeValidator.ts` checks: required fields present, ≥2
+ingredients, ≥2 instructions, no hallucination/placeholder keywords, no
+ingredients that look like instructions. `calculateConfidenceScore()` scores
+0-100. Known gap: the `isGenerated` penalty never fires because the LLM
+output schema doesn't include that field — see
+`docs/architecture/extraction-pipeline.md` for the fix, worth applying to
+v1 too if it's not been retired yet by the time you read this.
 
 ### Error Handling
 
-- Implement retry logic for LLM API failures (max 3 retries with exponential backoff)
-- Provide user-friendly error messages for:
-  - No recipe found in content
-  - Rate limit exceeded
-  - Invalid URL format
-  - Content extraction failures
-- Log errors for monitoring and prompt refinement
+Retry with exponential backoff on LLM/network failures
+(`lib/utils/retry.ts`), user-facing `ErrorCode`/`StatusCode` distinctions
+(`types/api.ts`) rather than one generic error message. Keep this pattern —
+it carries forward into v2's API design (`docs/architecture/api-design.md`).
 
 ## Project Structure
 
 ```
-/app                    # Next.js App Router pages
-  /api                  # API routes (serverless functions)
-    /extract            # Main extraction endpoint
-  /components           # React components
-    /RecipeCard         # Recipe display component
-    /InputForm          # URL/text input component
-  /lib                  # Utility functions
-    /extractors         # Content fetchers (YouTube, web scraping)
-    /llm                # LLM integration & prompt management
-    /cache              # Caching layer
-    /validators         # Recipe validation logic
-/public                 # Static assets
-/styles                 # Global styles (Tailwind config)
+/app                    # Next.js App Router pages + API routes
+  /api/extract           # Main v1 extraction endpoint
+/lib
+  /extractors            # Content fetchers (YouTube, web, Instagram)
+  /llm                    # LLM provider abstraction, prompts, parsing, budget
+  /cache                  # KV-based URL cache
+  /validators             # Recipe + content + URL validation
+  /db                      # Drizzle/Neon — v1 anonymous analytics only
+  /utils                   # Logging, rate limiting, SSRF checks, etc.
+/docs/architecture       # v2 technical design — READ BEFORE BUILDING v2
+/docs/design              # v2 UX flows
+/REQUIREMENTS.md          # v2 feature scope and rationale
+/BUILD_GUIDE.md           # v2 phased implementation plan
 ```
-
-## Development Phases
-
-### Phase 1: MVP (Weeks 1-3)
-
-- Basic Next.js setup with TypeScript + Tailwind
-- Input form with URL validation
-- YouTube transcript & web scraping
-- LLM integration with prompt engineering
-- Recipe card display with print/copy functionality
-
-### Phase 2: Monetization (Week 4)
-
-- Google AdSense integration
-- Stripe subscription setup
-- Session-based ad-free mode
-
-### Phase 3: Optimization (Weeks 5-6)
-
-- Caching implementation
-- Rate limiting
-- Analytics integration
-- Performance optimization
 
 ## Important Constraints & Guidelines
 
+### Security
+
+Known, documented issues as of the last audit (fix opportunistically, or as
+part of the v2 extraction pipeline rewrite per `docs/architecture/extraction-pipeline.md`):
+
+- SSRF: `lib/utils/urlSanitizer.ts`'s DNS-based private-IP check has a
+  TOCTOU gap — it resolves DNS once to check, then `fetch()` re-resolves
+  independently, leaving a DNS-rebinding window.
+- IPv6 private-range coverage is incomplete (misses the pure-hex form of
+  IPv4-mapped addresses).
+- `extractClientIp()` trusts `x-forwarded-for` without validating it came
+  through a trusted proxy — fine behind Vercel/Cloudflare's edge, not safe
+  to assume elsewhere.
+
 ### Copyright & Compliance
 
-- Focus on YouTube (public API) and public blog content
-- Add attribution links to original sources
-- Communicate that users should only extract recipes they have permission to use
-
-### Cost Monitoring
-
-- Set up budget alerts in Vercel, Stripe, and LLM provider dashboards
-- Build internal dashboard tracking: API calls, cache hit rate, cost per extraction
-- Implement emergency kill switch if costs spiral
-
-### Success Metrics
-
-- Extraction accuracy: 95%+
-- Processing time: <5 seconds
-- Cache hit rate: 40-60%
-- Error rate: <5%
-- Conversion rate: 2-5% (free to paid)
-
-## Vercel Deployment
-
-### Prerequisites
-
-- Vercel account ([sign up](https://vercel.com))
-- GitHub repository connected
-- Google Gemini API key ([get here](https://aistudio.google.com/app/apikey))
-
-### Deployment Status: ✅ READY
-
-The project is **fully configured and tested** for Vercel deployment with:
-
-- ✅ **Puppeteer/Instagram Support**: Using `@sparticuz/chromium` + `puppeteer-core` (serverless-compatible)
-- ✅ **Pre-Deployment Validation**: Automated checks via `npm run validate-deploy`
-- ✅ **Vercel Configuration**: Optimized `vercel.json` with function timeouts and CORS
-- ✅ **Environment Variables**: Documented in `.env.example`
-- ✅ **Build Verification**: TypeScript + lint + build all passing
-- ✅ **Documentation**: Comprehensive guides in `DEPLOYMENT.md` and `DEPLOYMENT_CHECKLIST.md`
-
-### Quick Deploy (3 Steps)
-
-1. **Validate deployment readiness:**
-   ```bash
-   npm run validate-deploy
-   ```
-   Expected output: `✓ Project is ready for Vercel deployment!`
-
-2. **Push to GitHub:**
-   ```bash
-   git add .
-   git commit -m "feat: Deploy to Vercel"
-   git push origin main
-   ```
-
-3. **Deploy on Vercel:**
-   - Visit [vercel.com/new](https://vercel.com/new)
-   - Import your repository
-   - Add environment variables:
-     - `GEMINI_API_KEY` (required)
-     - `YOUTUBE_API_KEY` (optional but recommended for YouTube extraction reliability)
-     - `NEXT_PUBLIC_APP_URL` (your Vercel URL, e.g., `https://your-app.vercel.app`)
-     - `ENABLE_DEBUG_LOGGING=false` (for production)
-   - Click "Deploy"
-
-### Post-Deployment Setup
-
-**Highly Recommended:**
-
-1. **Set up Vercel KV for caching:**
-   - Go to Vercel dashboard → Storage → Create Database → KV
-   - Environment variables (`KV_REST_API_URL`, `KV_REST_API_TOKEN`) added automatically
-   - Redeploy to activate caching
-   - **Impact**: Reduces LLM API costs by 40-60%
-
-2. **Set up budget alerts:**
-   - Gemini: [Google AI Studio](https://aistudio.google.com) → Usage & Billing
-   - Vercel: Dashboard → Usage & Billing → Notifications
-   - Set alerts at comfortable thresholds
-
-3. **Monitor first 24 hours:**
-   - Check Vercel function logs for errors
-   - Verify cache hit rate in logs
-   - Monitor Gemini API usage
-   - Test all extraction sources (YouTube, blogs, Instagram)
-
-### Important Notes
-
-**Instagram Extraction:**
-- Now uses `@sparticuz/chromium` (Vercel-compatible)
-- Works in serverless environment
-- May have slightly longer cold starts on first request
-
-**Cost Optimization:**
-- Caching reduces API costs significantly
-- Target cache hit rate: 40-60%
-- Monitor token usage in first week
-- Consider implementing Vercel KV for persistent caching
-
-**Troubleshooting:**
-- Build fails: Check [DEPLOYMENT.md](DEPLOYMENT.md) troubleshooting section
-- Runtime errors: View Vercel function logs
-- Instagram issues: Verify `@sparticuz/chromium` is installed
-- High costs: Check cache hit rate and implement stricter rate limiting
-
-### Validation Script Details
-
-The pre-deployment validation script (`npm run validate-deploy`) checks:
-
-- ✅ Environment variables documented
-- ✅ Git configuration (no sensitive files tracked)
-- ✅ Package.json requirements
-- ✅ Next.js and Vercel configuration
-- ✅ TypeScript compilation
-- ✅ Build configuration validity
-- ✅ Deployment readiness
-
-**Exit codes:**
-- `0`: Ready to deploy (all checks passed)
-- `1`: Errors detected (fix before deploying)
-
-### Documentation
-
-For detailed instructions, see:
-
-- **[DEPLOYMENT.md](DEPLOYMENT.md)**: Complete deployment guide (300+ lines)
-  - Step-by-step Vercel setup
-  - Environment variables reference
-  - Vercel KV caching configuration
-  - Puppeteer/Instagram setup
-  - Cost monitoring and optimization
-  - Troubleshooting guide
-
-- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)**: Quick reference checklist
-  - Pre-deployment checks
-  - Post-deployment verification
-  - Monitoring tasks
-  - Emergency rollback
-
-- **[VERCEL_READY.md](VERCEL_READY.md)**: Summary of deployment readiness changes
-
-### Rollback
-
-If deployment has issues:
-
-```bash
-# Via Vercel CLI
-vercel rollback <previous-deployment-url>
-
-# Or via Vercel dashboard
-# Deployments → Previous deployment → "..." → Promote to Production
-```
+Attribution links to original sources; users should only extract recipes
+they have permission to use. This guidance still applies in v2 even though
+the audience is now private, not public.
 
 ## Work Log
 
-All project changes, decisions, and progress should be tracked in [WORK_LOG.md](WORK_LOG.md).
+All project changes, decisions, and progress should be tracked in
+[WORK_LOG.md](WORK_LOG.md). Update it when completing a development phase,
+making an architectural decision, fixing a significant bug, or deploying.
+Use `/log-update` or edit the file directly. **Remind the user to update the
+log, or offer to do it, at the end of a task** if it hasn't been done.
 
-Update the work log when:
+## Environment Variables (v1 — current)
 
-- Completing a development phase or major feature
-- Making architectural decisions
-- Encountering and solving significant bugs
-- Implementing cost optimizations
-- Changing LLM prompts or model selection
-- Deploying to production
-  -Remind User to update log or offer to do it at the end of a task
-  Use the command `/log-update` to add entries to the work log, or manually edit WORK_LOG.md.
-
-## Environment Variables
-
-Required environment variables:
-
-```bash
-# LLM API - Google Gemini
-GEMINI_API_KEY=              # Google Gemini API key (required)
-
-# YouTube Data API v3 (optional - fallback for transcript extraction)
-# Get from: https://console.cloud.google.com/apis/credentials
-# Enable "YouTube Data API v3" in your Google Cloud project
-YOUTUBE_API_KEY=             # YouTube Data API key (optional but recommended)
-
-# Caching
-REDIS_URL=                   # Redis connection string
-# OR
-KV_REST_API_URL=            # Vercel KV URL
-KV_REST_API_TOKEN=          # Vercel KV token
-
-# Payment
-STRIPE_SECRET_KEY=
-STRIPE_PUBLISHABLE_KEY=
-STRIPE_WEBHOOK_SECRET=
-
-# Analytics
-NEXT_PUBLIC_ANALYTICS_ID=
-
-# Rate Limiting
-RATE_LIMIT_MAX_REQUESTS=10   # Free tier daily limit
-```
-
-## Testing Strategy
-
-- Test extraction accuracy with diverse recipe sources:
-  - Long blog posts with ads
-  - Short social media captions
-  - YouTube video transcripts
-  - Recipe websites with structured data
-- Validate cost optimization (check cache hits, token counts)
-- Test rate limiting and abuse prevention
-- Verify responsive design across devices
-- Test payment flow end-to-end
-
-## Future Enhancements (Post-MVP)
-
-- User accounts & recipe collections
-- Mobile apps (iOS/Android)
-- Browser extension
-- Recipe editing capabilities
-- Meal planning & shopping lists
-- Nutritional analysis
-- Multi-language support
-- API access for developers
+See `.env.example` for the full current list (`OPENROUTER_API_KEY`,
+`LLM_PRIMARY_MODEL`/`LLM_FALLBACK_MODEL`, `YOUTUBE_API_KEY`,
+`KV_REST_API_URL`/`TOKEN`, `DATABASE_URL`, rate-limit/AdSense/Stripe vars).
+v2's environment variables (Cloudflare bindings, better-auth/Google OAuth
+secrets, VAPID keys) are covered in `BUILD_GUIDE.md` Phase 0 — don't conflate
+the two lists.
