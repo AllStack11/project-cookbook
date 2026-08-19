@@ -27,11 +27,29 @@ migration step to design either.
    wrangler queues create extraction-jobs
    wrangler queues create notification-fanout
    ```
-4. Add the resulting IDs to `wrangler.toml` (bindings for D1, KV, R2,
-   Queues — one producer/consumer pair per queue).
-5. Set secrets (`wrangler secret put ...`): Google OAuth client
-   ID/secret, better-auth secret, the LLM provider API key, VAPID
-   public/private keys.
+4. Add the resulting IDs to `wrangler.toml` under both `[env.staging]` and
+   `[env.production]` blocks (`docs/architecture/operations.md`) — same
+   binding names, separate resource IDs per environment. Repeat resource
+   creation once per environment (a second D1/R2/KV/Queues instance costs
+   nothing extra on the free tier).
+5. Set secrets (`wrangler secret put ... --env staging` /
+   `--env production`, each set independently) and repo secrets (GitHub
+   Actions). Full checklist:
+
+   | Secret | Where | Used for |
+   |---|---|---|
+   | `CLOUDFLARE_API_TOKEN` | GitHub repo secret | CI deploy (`wrangler deploy`) |
+   | `CLOUDFLARE_ACCOUNT_ID` | GitHub repo secret | CI deploy |
+   | `GOOGLE_CLIENT_ID` | Wrangler secret (per env) | better-auth Google OAuth provider |
+   | `GOOGLE_CLIENT_SECRET` | Wrangler secret (per env) | better-auth Google OAuth provider |
+   | `BETTER_AUTH_SECRET` | Wrangler secret (per env) | Session/cookie signing — generate a fresh random value **per environment**, never share staging/production |
+   | `VAPID_PUBLIC_KEY` | Wrangler var (per env, not secret — shipped to the client) | Web Push subscription |
+   | `VAPID_PRIVATE_KEY` | Wrangler secret (per env) | Web Push send-signing |
+   | `NEXT_PUBLIC_APP_URL` | Wrangler var (per env) | OAuth redirect URI, invite link generation, VAPID subject |
+
+   No LLM provider API key needed — Workers AI is a binding
+   (`env.AI.run(...)`), not a secret-authenticated HTTP client
+   (`stack-decision.md`).
 6. Confirm `npx @opennextjs/cloudflare build` produces a deployable Worker
    from the existing Next.js app *before* changing anything else — this
    validates the adapter path early, per the risk noted in
@@ -41,12 +59,16 @@ migration step to design either.
 7. Set up deploys via **GitHub Actions running `wrangler deploy`** (not
    Cloudflare's native Git integration, and not manual deploys) — a
    workflow that runs `@opennextjs/cloudflare build` then `wrangler
-   deploy` on push to `main`, gated on the CI checks below passing. This
-   gives explicit control over the OpenNext build step rather than trusting
-   Cloudflare's dashboard build to handle it, and keeps deploys consistent
-   with how this repo already uses GitHub (PRs, CI). Needs
-   `CLOUDFLARE_API_TOKEN` (scoped to Workers deploy) and
-   `CLOUDFLARE_ACCOUNT_ID` as repo secrets.
+   deploy`, gated on the CI checks below passing. This gives explicit
+   control over the OpenNext build step rather than trusting Cloudflare's
+   dashboard build to handle it, and keeps deploys consistent with how this
+   repo already uses GitHub (PRs, CI). Needs `CLOUDFLARE_API_TOKEN` (scoped
+   to Workers deploy) and `CLOUDFLARE_ACCOUNT_ID` as repo secrets (table
+   above). **Two deploy targets, not one** (`docs/architecture/operations.md`):
+   `wrangler deploy --env staging` on every merge to `main`;
+   `wrangler deploy --env production` only on an explicit trigger (a git
+   tag, or manual `workflow_dispatch`) — don't auto-deploy every merge
+   straight to the environment holding real, permanent friend data.
 8. Set up the PR-blocking CI workflow per `docs/architecture/testing-strategy.md`:
    lint → typecheck → unit tests (coverage-gated) → worker-integration
    tests → extraction-pipeline (fixture) tests → Playwright E2E. Mark each

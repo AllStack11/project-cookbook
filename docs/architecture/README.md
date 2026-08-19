@@ -17,9 +17,11 @@ Reading order:
 5. [`api-design.md`](./api-design.md) — the API surface the frontend calls.
 6. [`testing-strategy.md`](./testing-strategy.md) — Vitest/vitest-pool-workers/
    Playwright, coverage policy, CI gating.
-7. [`../design/ux-flows.md`](../design/ux-flows.md) — screens and user flows
+7. [`operations.md`](./operations.md) — staging vs. production
+   environments, D1 backup/recovery, observability.
+8. [`../design/ux-flows.md`](../design/ux-flows.md) — screens and user flows
    for the PWA.
-8. [`../../BUILD_GUIDE.md`](../../BUILD_GUIDE.md) — phased build plan and
+9. [`../../BUILD_GUIDE.md`](../../BUILD_GUIDE.md) — phased build plan and
    environment setup, once you're ready to implement.
 
 ## One-paragraph summary of the decision
