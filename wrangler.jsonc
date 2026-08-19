@@ -1,0 +1,121 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "just-the-recipe",
+	"compatibility_date": "2026-08-19",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			// Self-reference service binding, the service name must match the worker name
+			// see https://opennext.js.org/cloudflare/caching
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "just-the-recipe"
+		}
+	],
+	"images": {
+		// Enable image optimization
+		// see https://opennext.js.org/cloudflare/howtos/image
+		"binding": "IMAGES"
+	},
+
+	// --- App bindings (docs/architecture/stack-decision.md, data-model.md,
+	// operations.md). Placeholder IDs below - replaced once real resources
+	// exist (BUILD_GUIDE.md Phase 0 steps 3-4). Do not deploy against these
+	// placeholders - `wrangler deploy` will fail loudly on invalid IDs
+	// rather than silently deploying broken bindings, which is the point. ---
+
+	"env": {
+		"staging": {
+			"name": "just-the-recipe-staging",
+			"vars": {
+				"NEXT_PUBLIC_APP_URL": "https://staging.TODO-set-domain.example",
+				"VAPID_PUBLIC_KEY": "TODO-generate-vapid-keypair"
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "just-the-recipe-db-staging",
+					"database_id": "TODO-wrangler-d1-create"
+				}
+			],
+			"kv_namespaces": [
+				{
+					"binding": "EXTRACTION_CACHE",
+					"id": "TODO-wrangler-kv-namespace-create"
+				}
+			],
+			"r2_buckets": [
+				{
+					// App uploads: recipe images, photo/PDF OCR sources (data-model.md)
+					"binding": "UPLOADS",
+					"bucket_name": "just-the-recipe-uploads-staging"
+				},
+				{
+					// OpenNext's own ISR/data cache - separate from the app UPLOADS bucket above
+					"binding": "NEXT_INC_CACHE_R2_BUCKET",
+					"bucket_name": "just-the-recipe-opennext-cache-staging"
+				}
+			],
+			"queues": {
+				"producers": [
+					{ "binding": "EXTRACTION_QUEUE", "queue": "extraction-jobs-staging" },
+					{ "binding": "NOTIFICATION_QUEUE", "queue": "notification-fanout-staging" }
+				],
+				"consumers": [
+					{ "queue": "extraction-jobs-staging" },
+					{ "queue": "notification-fanout-staging" }
+				]
+			},
+			"ai": {
+				"binding": "AI"
+			}
+		},
+		"production": {
+			"name": "just-the-recipe-production",
+			"vars": {
+				"NEXT_PUBLIC_APP_URL": "https://TODO-set-domain.example",
+				"VAPID_PUBLIC_KEY": "TODO-generate-vapid-keypair"
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "just-the-recipe-db",
+					"database_id": "TODO-wrangler-d1-create"
+				}
+			],
+			"kv_namespaces": [
+				{
+					"binding": "EXTRACTION_CACHE",
+					"id": "TODO-wrangler-kv-namespace-create"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "UPLOADS",
+					"bucket_name": "just-the-recipe-uploads"
+				},
+				{
+					"binding": "NEXT_INC_CACHE_R2_BUCKET",
+					"bucket_name": "just-the-recipe-opennext-cache"
+				}
+			],
+			"queues": {
+				"producers": [
+					{ "binding": "EXTRACTION_QUEUE", "queue": "extraction-jobs" },
+					{ "binding": "NOTIFICATION_QUEUE", "queue": "notification-fanout" }
+				],
+				"consumers": [
+					{ "queue": "extraction-jobs" },
+					{ "queue": "notification-fanout" }
+				]
+			},
+			"ai": {
+				"binding": "AI"
+			}
+		}
+	}
+}
