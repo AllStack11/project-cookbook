@@ -15,9 +15,11 @@ Reading order:
 4. [`notifications.md`](./notifications.md) — push + in-app notification
    design.
 5. [`api-design.md`](./api-design.md) — the API surface the frontend calls.
-6. [`../design/ux-flows.md`](../design/ux-flows.md) — screens and user flows
+6. [`testing-strategy.md`](./testing-strategy.md) — Vitest/vitest-pool-workers/
+   Playwright, coverage policy, CI gating.
+7. [`../design/ux-flows.md`](../design/ux-flows.md) — screens and user flows
    for the PWA.
-7. [`../../BUILD_GUIDE.md`](../../BUILD_GUIDE.md) — phased build plan and
+8. [`../../BUILD_GUIDE.md`](../../BUILD_GUIDE.md) — phased build plan and
    environment setup, once you're ready to implement.
 
 ## One-paragraph summary of the decision

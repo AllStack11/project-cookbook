@@ -41,11 +41,24 @@ migration step to design either.
 7. Set up deploys via **GitHub Actions running `wrangler deploy`** (not
    Cloudflare's native Git integration, and not manual deploys) — a
    workflow that runs `@opennextjs/cloudflare build` then `wrangler
-   deploy` on push to `main`. This gives explicit control over the
-   OpenNext build step rather than trusting Cloudflare's dashboard build
-   to handle it, and keeps deploys consistent with how this repo already
-   uses GitHub (PRs, CI). Needs `CLOUDFLARE_API_TOKEN` (scoped to Workers
-   deploy) and `CLOUDFLARE_ACCOUNT_ID` as repo secrets.
+   deploy` on push to `main`, gated on the CI checks below passing. This
+   gives explicit control over the OpenNext build step rather than trusting
+   Cloudflare's dashboard build to handle it, and keeps deploys consistent
+   with how this repo already uses GitHub (PRs, CI). Needs
+   `CLOUDFLARE_API_TOKEN` (scoped to Workers deploy) and
+   `CLOUDFLARE_ACCOUNT_ID` as repo secrets.
+8. Set up the PR-blocking CI workflow per `docs/architecture/testing-strategy.md`:
+   lint → typecheck → unit tests (coverage-gated) → worker-integration
+   tests → extraction-pipeline (fixture) tests → Playwright E2E. Mark each
+   as a required status check once branch protection is enabled
+   (`CONTRIBUTING.md`). Also set up the separate scheduled workflow for the
+   live-extraction suite (non-blocking).
+
+**Testing note that applies to every phase below, not just Phase 0**: write
+tests alongside each phase's code, in the same PR, per
+`docs/architecture/testing-strategy.md` — not as a follow-up pass. Each
+phase's "exit criteria" implicitly includes "and it's covered by the
+appropriate test layer."
 
 ## Phase 1 — Auth + data foundation
 
