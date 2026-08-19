@@ -29,10 +29,10 @@ part of the Google OAuth sign-up flow (see `stack-decision.md`).
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/recipes` | List the shared pool. Supports `?tag=`, `?q=` (search title), pagination. |
-| `GET` | `/api/recipes/:id` | Full recipe detail, including cook-log summary, rating rollup, notes. |
-| `POST` | `/api/recipes` | Create from a URL/text/upload — kicks off the extraction pipeline (`extraction-pipeline.md`). For photo/PDF, this returns immediately with an `uploads` row in `pending` state, not a finished recipe. |
-| `PATCH` | `/api/recipes/:id` | Edit core fields. **403 unless `session.userId === recipe.addedByUserId`** — this check is the entire enforcement of the "only the adder can edit" rule from the requirements; get it right. |
+| `GET` | `/api/recipes` | List the shared pool. Supports `?tag=`, `?q=` (search title), pagination. **Only `status: "published"` rows** — `needs_review` recipes don't appear here. |
+| `GET` | `/api/recipes/:id` | Full recipe detail, including cook-log summary, rating rollup, notes. Works regardless of `status` — a `needs_review` recipe's adder can still open it directly (e.g. via the link handed back from `POST`) even though it's excluded from the list. |
+| `POST` | `/api/recipes` | Create from a URL/text/upload — kicks off the extraction pipeline (`extraction-pipeline.md`). Three possible outcomes: (1) **dedup hit** — a recipe with this normalized source URL already exists, response returns that existing recipe, nothing new created; (2) **photo/PDF** — returns immediately with an `uploads` row in `pending` state, not a finished recipe; (3) **normal** — returns the new recipe, with `status: "published"` or `"needs_review"` depending on the confidence threshold (`data-model.md`). |
+| `PATCH` | `/api/recipes/:id` | Edit core fields, and/or transition `status: "needs_review"` → `"published"` once the adder is satisfied. **403 unless `session.userId === recipe.addedByUserId`** — this check is the entire enforcement of the "only the adder can edit" rule from the requirements; get it right. Publishing a previously-`needs_review` recipe should trigger the `new_recipe` notification fan-out at that point, not at creation time. |
 
 **No `DELETE /api/recipes/:id`.** Confirmed: recipes are never deleted —
 they stay in the database permanently once added (`data-model.md`). Don't

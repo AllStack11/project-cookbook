@@ -56,6 +56,30 @@ hand-roll those, they're listed below only so the relationships are clear.
 - **Notes can only be deleted by their own author** — no moderation
   capability for the recipe owner over other people's notes. Simple,
   matches the attribution model.
+- **Deduplication by source URL.** `recipes.sourceUrlNormalized` holds the
+  same normalized-URL form used for the KV extraction cache key
+  (`extraction-pipeline.md`), with a **unique index** on it — SQLite treats
+  each `NULL` as distinct, so text/photo/PDF-sourced recipes (which have no
+  source URL) aren't affected by the constraint. Before running extraction
+  on a URL, check for an existing row with a matching
+  `sourceUrlNormalized` first; if one exists, hand the requester that
+  existing recipe instead of creating a duplicate — this consolidates
+  cook-log/rating/note history on one entry instead of splitting it across
+  near-identical pool entries, and it's also a cost/latency win (skips
+  extraction entirely for a recipe someone already added). The unique
+  index is a backstop against a race (two people submitting the same new
+  URL at nearly the same instant), not the primary mechanism — the primary
+  mechanism is the lookup-before-extract check.
+- **Low-confidence extractions require review before publishing.**
+  `recipes.status` defaults to `"published"`, but when
+  `confidenceScore` lands below a threshold (default: `50` — the
+  validator's neutral base score, so anything net-negative on quality
+  signals; tunable, not a hard requirement), the row is inserted with
+  `status: "needs_review"` instead. A `needs_review` recipe is excluded
+  from pool listings and the food picker until its adder reviews/edits and
+  explicitly publishes it (`PATCH` with `{ status: "published" }`, subject
+  to the same adder-only ownership check as any other edit) — see
+  `api-design.md`.
 
 ## Schema
 
@@ -95,6 +119,7 @@ export const invites = sqliteTable("invites", {
 export const recipes = sqliteTable("recipes", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   addedByUserId: text("added_by_user_id").notNull(), // FK -> user.id; only this user can edit core fields
+  status: text("status").notNull().default("published"), // "published" | "needs_review"
 
   title: text("title").notNull(),
   description: text("description"),
@@ -109,6 +134,7 @@ export const recipes = sqliteTable("recipes", {
 
   imageR2Key: text("image_r2_key"), // R2 object key, not a full URL
   sourceUrl: text("source_url"),
+  sourceUrlNormalized: text("source_url_normalized"), // dedup key; null for text/photo/PDF sources with no URL
   sourcePlatform: text("source_platform"), // youtube | blog | instagram | tiktok | ... | photo | pdf
   confidenceScore: integer("confidence_score"),
 
@@ -213,6 +239,8 @@ export const pushSubscriptions = sqliteTable("push_subscriptions", {
 ## Indexes to add in the migration (not shown inline above)
 
 - `recipes(added_by_user_id)`
+- `recipes(source_url_normalized)` — **unique** (dedup)
+- `recipes(status)` — pool/picker queries filter `status = 'published'`
 - `recipe_tags(recipe_id)`, `recipe_tags(tag_id)`, composite PK on both
 - `cook_logs(recipe_id)`, `cook_logs(user_id)`
 - `recipe_notes(recipe_id)`

@@ -33,23 +33,50 @@ kitchen or deciding what to eat on a phone):
 
 1. Tap **Add**.
 2. Choose input mode: paste URL, paste text, take/upload photo, upload PDF.
-3. **URL/text**: submit → loading state → recipe detail screen (synchronous
-   path, same as v1's flow).
+3. **URL/text**: submit → loading state → one of three outcomes
+   (`api-design.md`):
+   - **Already in the pool** (dedup hit on source URL) → skip straight to
+     the existing recipe's detail screen with a "this is already in the
+     pool" note, no new extraction run.
+   - **Published** → recipe detail screen, same as v1's flow.
+   - **Needs review** (confidence below threshold) → a review/edit screen
+     showing exactly what was extracted, editable inline, with a "Publish
+     to pool" action. Nothing is visible to other friends until this step
+     is completed — see "Needs-review" below.
 4. **Photo/PDF**: submit → immediately shows an "extracting…" placeholder
-   card in the pool (this is the async path — see `extraction-pipeline.md`)
-   → replaced in place once the Queue-driven extraction resolves (via
-   polling or the push notification landing you back on this card).
+   card (this is the async path — see `extraction-pipeline.md`) → resolves
+   in place once the Queue-driven extraction finishes, landing on whichever
+   of the three outcomes above applies (dedup isn't checked for these since
+   they have no source URL to key on).
 5. On any extraction failure, show the specific failure reason (not just a
    generic error — the current app's `ErrorCode` variants already
    distinguish "no recipe found" vs. "extraction failed" vs. "unsafe URL",
    keep surfacing that distinction to the user).
-6. On success, the recipe is immediately in the shared pool — no separate
-   "publish" step. Tags can be added at this point or later (don't block
-   saving on tagging). Tag input is autocomplete-first: typing suggests
-   existing matching tags before offering "create new tag" — freeform
-   creation is allowed, but reusing an existing tag is always presented
-   first to keep the food picker's filters from fragmenting
+6. On a normal **published** outcome, the recipe is immediately in the
+   shared pool — no separate publish step. Tags can be added at this point
+   or later (don't block saving on tagging). Tag input is autocomplete-first:
+   typing suggests existing matching tags before offering "create new tag" —
+   freeform creation is allowed, but reusing an existing tag is always
+   presented first to keep the food picker's filters from fragmenting
    (`data-model.md`).
+
+### Needs-review sub-flow
+
+1. Landing screen shows the extracted title/ingredients/instructions/etc.
+   pre-filled and editable, with a visible "this hasn't been checked yet —
+   review before it goes live" framing (not styled as an error; a
+   needs-review result is expected behavior on a weak source, not a bug).
+2. The adder edits whatever's wrong (or leaves it if it's actually fine —
+   the threshold is a heuristic, not always right) and taps "Publish to
+   pool."
+3. Only on publish does the recipe become visible in `/api/recipes`
+   listings and the picker, and only then does the `new_recipe`
+   notification fire to other friends (`notifications.md`) — a
+   still-under-review recipe doesn't spam the group.
+4. If the adder abandons this screen without publishing, the recipe simply
+   sits in `needs_review` state indefinitely — reachable again from their
+   own profile ("recipes you've added") rather than lost, since recipes are
+   never deleted.
 
 ## Flow: Browse the pool
 
@@ -111,7 +138,9 @@ architecture decision now.
 1. Own info (name, avatar from Google account, editable display name).
 2. Own cook history (same shape as the recipe-detail cook log, filtered to
    you) — a simple personal "what have I cooked" record.
-3. Recipes you've added.
+3. Recipes you've added — including any still sitting in `needs_review`
+   (visibly flagged as such here, since this is the only place they're
+   reachable until published).
 4. Notification preferences (push on/off) — no per-type granularity needed
    yet per `notifications.md`.
 
