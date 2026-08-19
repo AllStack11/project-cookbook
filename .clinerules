@@ -1,14 +1,20 @@
 # Cline Project Rules
 
+**This project is mid-overhaul** — pivoting from a public Vercel-hosted app
+to a private Cloudflare-hosted app for a small friend group. See
+`CLAUDE.md`'s overhaul notice, `REQUIREMENTS.md`, and `docs/architecture/`
+before assuming anything about current vs. target architecture.
+
 When working on this project, you must adhere to the following rules:
 
-1. **Reference CLAUDE.md**: Always read `CLAUDE.md` at the start of a session. It contains the project overview, tech stack, architecture, and critical constraints (especially cost optimization).
-2. **Maintain WORK_LOG.md**: Every significant change, decision, or feature completion must be documented in `WORK_LOG.md`.
-3. **Follow Technical Standards**:
+1. **Reference CLAUDE.md**: Always read `CLAUDE.md` at the start of a session. It contains the project overview, current (v1) vs. target (v2) architecture, and critical constraints.
+2. **For v2/overhaul work**: read `REQUIREMENTS.md`, `docs/architecture/README.md`, and `BUILD_GUIDE.md` first — don't improvise architecture decisions that are already made there.
+3. **Maintain WORK_LOG.md**: Every significant change, decision, or feature completion must be documented in `WORK_LOG.md`.
+4. **Follow Technical Standards**:
    - Use the logging system in `lib/utils/logger.ts`.
-   - Adhere to the `Recipe` interface defined in `types/recipe.ts`.
-   - Prioritize cost-efficiency (token optimization, and caching).
-4. **Validation**: Always validate LLM responses using the logic in `lib/validators/recipeValidator.ts`.
+   - Adhere to the `Recipe` interface defined in `types/recipe.ts` (v1) / `docs/architecture/data-model.md` (v2).
+   - v1 code is cost-constrained (public freemium product); v2 is "good quality, cost-aware" per `docs/architecture/stack-decision.md`, not cost-minimized — don't port v1's aggressive cost-cutting (free-tier-only models, per-IP rate limiting) into v2 code.
+5. **Validation**: Always validate LLM responses using the logic in `lib/validators/recipeValidator.ts`.
 
 ## Work Log Updates
 

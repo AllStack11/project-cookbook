@@ -1,5 +1,14 @@
 # Just The Recipe
 
+> **This project is mid-overhaul.** It's pivoting from the public app
+> described below to a private app for a small friend group, rebuilt on
+> Cloudflare with a redesigned extraction backend and new social features
+> (shared recipe pool, cook-log/ratings/notes, a cuisine picker,
+> notifications). The code in this repo today is still the v1 app described
+> below and continues to work as documented. For where this is headed, see
+> [`REQUIREMENTS.md`](./REQUIREMENTS.md), [`docs/architecture/`](./docs/architecture/README.md),
+> and [`BUILD_GUIDE.md`](./BUILD_GUIDE.md).
+
 A Next.js web application that extracts clean, structured recipes from various sources (YouTube videos, blog posts, social media) using LLM-powered content parsing.
 
 ## Features
