@@ -19,6 +19,14 @@ hand-roll those, they're listed below only so the relationships are clear.
 - **Tags are normalized** (`tags` + `recipe_tags` join table), unlike
   ingredients, because the cuisine/food picker needs to filter/query by tag
   efficiently — that's a real relational access pattern, not just storage.
+  **Tag creation is freeform but reuse-first**: anyone can create a new tag,
+  but the tagging UI queries existing tags (simple `LIKE`/prefix match
+  against `tags.name` — no need for real fuzzy matching at this table size)
+  and surfaces close matches before allowing a brand-new one, to keep the
+  picker's filters from fragmenting into near-duplicates ("italian" vs.
+  "Italian food"). This is a UI-layer behavior, not a schema constraint —
+  the `tags` table itself doesn't enforce uniqueness beyond the exact-name
+  `unique()` already on it.
 - **No separate ratings table.** Per the requirements, the aggregate rating
   is a rollup of `cook_logs.rating`, not an independent thing someone sets.
   Computing `AVG(rating)` per recipe is a cheap query at this data volume;
@@ -138,9 +146,17 @@ export const cookLogs = sqliteTable("cook_logs", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }), // set on edit; null until first edit
 });
 // "who cooked it how many times" = COUNT(*) GROUP BY recipeId, userId
 // "aggregate rating" = AVG(rating) WHERE rating IS NOT NULL GROUP BY recipeId
+//
+// Edit/delete window: a cook log can be edited or deleted by its own
+// logger only within a short window after creation (default 24h — a
+// plain constant check against `createdAt`, no schema support needed
+// beyond `updatedAt`). After the window, it's permanent, same as recipes.
+// This is an app-layer check (`now - cookLogs.createdAt < EDIT_WINDOW_MS`),
+// not enforced by the database.
 
 // --- Notes (recipe-level, multi-author) ---
 

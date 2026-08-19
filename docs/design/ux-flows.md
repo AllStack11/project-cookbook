@@ -45,7 +45,11 @@ kitchen or deciding what to eat on a phone):
    keep surfacing that distinction to the user).
 6. On success, the recipe is immediately in the shared pool — no separate
    "publish" step. Tags can be added at this point or later (don't block
-   saving on tagging).
+   saving on tagging). Tag input is autocomplete-first: typing suggests
+   existing matching tags before offering "create new tag" — freeform
+   creation is allowed, but reusing an existing tag is always presented
+   first to keep the food picker's filters from fragmenting
+   (`data-model.md`).
 
 ## Flow: Browse the pool
 
@@ -62,13 +66,17 @@ kitchen or deciding what to eat on a phone):
 Sections, top to bottom:
 
 1. Title, image, metadata (servings/times), ingredients, instructions —
-   same core recipe display as v1.
+   same core recipe display as v1, **carrying forward v1's serving-size
+   scaling and print/copy export** as baseline functionality, not new work.
 2. **Attribution**: "added by {name}". Edit button visible only if
    `session.userId === recipe.addedByUserId`.
 3. **Cook log**: aggregate rating + count, "Log a cook" button (opens a
    small form: date defaults to now, optional 1-5 rating), then a list of
    past cook events (who, when, rating) — this is the "who cooked it how
-   many times" feature made visible.
+   many times" feature made visible. Your own recent entries show an
+   edit/delete affordance for a short window after logging (default 24h —
+   `data-model.md`), then it locks; older entries in the list are read-only
+   even to the person who logged them.
 4. **Notes**: a simple threaded list, any friend can add one.
 5. Anyone can rate via logging a cook; only the adder can edit the recipe
    itself.

@@ -45,6 +45,8 @@ build a delete endpoint.
 | `POST` | `/api/recipes/:id/cook-logs` | Log a cook. `{ cookedAt?, rating? }` — both optional per the schema (you can log without rating). Triggers the notification fan-out (`notifications.md`). |
 | `GET` | `/api/recipes/:id/cook-logs` | Full cook history for a recipe (who, when, rating) — this is the "who cooked it how many times" view. |
 | `GET` | `/api/users/:id/cook-logs` | A user's own cook history, for a profile view. |
+| `PATCH` | `/api/cook-logs/:id` | Edit `cookedAt`/`rating`. **403 unless `session.userId === cookLog.userId` AND within the edit window** (default 24h from `createdAt` — `data-model.md`); past the window, 403 regardless of ownership. |
+| `DELETE` | `/api/cook-logs/:id` | Same ownership + time-window check as PATCH. |
 
 ## Notes
 
@@ -59,6 +61,7 @@ build a delete endpoint.
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/tags` | All available tags, for filter UI and the picker. |
+| `GET` | `/api/tags?search=` | Prefix/substring match against existing tags, for the "reuse existing tag first" autocomplete when tagging a recipe (`data-model.md`). |
 | `GET` | `/api/picker` | `?tags=italian,weeknight` → returns a filtered/randomized suggestion from the pool. This is the whole "food picker" feature — it's a query against `recipes` joined through `recipe_tags`, not a separate subsystem. |
 
 ## Uploads (photo/PDF)
