@@ -38,6 +38,14 @@ migration step to design either.
    `stack-decision.md`. If it doesn't work cleanly on the current codebase,
    that's the moment to decide on the Hono/Vite fallback, before more work
    is built on top of the assumption.
+7. Set up deploys via **GitHub Actions running `wrangler deploy`** (not
+   Cloudflare's native Git integration, and not manual deploys) — a
+   workflow that runs `@opennextjs/cloudflare build` then `wrangler
+   deploy` on push to `main`. This gives explicit control over the
+   OpenNext build step rather than trusting Cloudflare's dashboard build
+   to handle it, and keeps deploys consistent with how this repo already
+   uses GitHub (PRs, CI). Needs `CLOUDFLARE_API_TOKEN` (scoped to Workers
+   deploy) and `CLOUDFLARE_ACCOUNT_ID` as repo secrets.
 
 ## Phase 1 — Auth + data foundation
 
@@ -50,11 +58,19 @@ migration step to design either.
    known #4203 bug noted in `stack-decision.md` before building anything on
    top of auth — a flaky session layer will look like bugs everywhere else
    if it's not verified first.
-4. Basic profile screen (view/edit own name+avatar) — the smallest possible
-   thing that proves auth + D1 + a write path all work end to end.
+4. Build the `invites` table + the `user.create` hook that gates account
+   creation on a valid, unused, unexpired invite code (`stack-decision.md`,
+   `data-model.md`). Test the rejection path explicitly (invalid/used/
+   expired code) — this is the entire access-control boundary for the app,
+   worth being sure it actually blocks before moving on.
+5. Basic profile screen (view/edit own name+avatar, generate an invite
+   link) — the smallest possible thing that proves auth + D1 + a write path
+   all work end to end.
 
-**Exit criteria**: you can log in with Google, see your profile, and it
-persists across a page reload without getting logged out.
+**Exit criteria**: you can log in with Google via a valid invite, see your
+profile, generate an invite for a second test account, confirm an
+*invalid* invite code is rejected, and confirm your session persists across
+a page reload without getting logged out.
 
 ## Phase 2 — Extraction pipeline rewrite
 

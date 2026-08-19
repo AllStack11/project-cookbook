@@ -19,6 +19,14 @@ hand-roll those, they're listed below only so the relationships are clear.
 - **Tags are normalized** (`tags` + `recipe_tags` join table), unlike
   ingredients, because the cuisine/food picker needs to filter/query by tag
   efficiently — that's a real relational access pattern, not just storage.
+  **Tag creation is freeform but reuse-first**: anyone can create a new tag,
+  but the tagging UI queries existing tags (simple `LIKE`/prefix match
+  against `tags.name` — no need for real fuzzy matching at this table size)
+  and surfaces close matches before allowing a brand-new one, to keep the
+  picker's filters from fragmenting into near-duplicates ("italian" vs.
+  "Italian food"). This is a UI-layer behavior, not a schema constraint —
+  the `tags` table itself doesn't enforce uniqueness beyond the exact-name
+  `unique()` already on it.
 - **No separate ratings table.** Per the requirements, the aggregate rating
   is a rollup of `cook_logs.rating`, not an independent thing someone sets.
   Computing `AVG(rating)` per recipe is a cheap query at this data volume;
@@ -33,6 +41,45 @@ hand-roll those, they're listed below only so the relationships are clear.
   is limited to cook-log/rating/notes writes, which the schema itself makes
   structurally impossible to confuse with editing the recipe (they're
   different tables).
+- **Recipes are never deleted.** Confirmed: once added, a recipe stays in
+  the database permanently — no delete endpoint, no soft-delete flag. This
+  sidesteps the whole "what happens to cook-log history when a recipe is
+  removed" question by construction: there's no removal to design around.
+  If a bad/garbage extraction needs to stop showing up, that's an edit
+  (fix it, since only the adder can edit) or, at most, a future "hide from
+  pool" flag — not deletion. Don't build a delete endpoint speculatively.
+- **Recipe images are downloaded into R2**, not hotlinked to the source.
+  The extraction pipeline fetches the source image and stores a copy
+  (`recipes.imageR2Key`) so the recipe card doesn't break if the source
+  page later changes, deletes the image, or blocks hotlinking — see
+  `extraction-pipeline.md`.
+- **Notes can only be deleted by their own author** — no moderation
+  capability for the recipe owner over other people's notes. Simple,
+  matches the attribution model.
+- **Deduplication by source URL.** `recipes.sourceUrlNormalized` holds the
+  same normalized-URL form used for the KV extraction cache key
+  (`extraction-pipeline.md`), with a **unique index** on it — SQLite treats
+  each `NULL` as distinct, so text/photo/PDF-sourced recipes (which have no
+  source URL) aren't affected by the constraint. Before running extraction
+  on a URL, check for an existing row with a matching
+  `sourceUrlNormalized` first; if one exists, hand the requester that
+  existing recipe instead of creating a duplicate — this consolidates
+  cook-log/rating/note history on one entry instead of splitting it across
+  near-identical pool entries, and it's also a cost/latency win (skips
+  extraction entirely for a recipe someone already added). The unique
+  index is a backstop against a race (two people submitting the same new
+  URL at nearly the same instant), not the primary mechanism — the primary
+  mechanism is the lookup-before-extract check.
+- **Low-confidence extractions require review before publishing.**
+  `recipes.status` defaults to `"published"`, but when
+  `confidenceScore` lands below a threshold (default: `50` — the
+  validator's neutral base score, so anything net-negative on quality
+  signals; tunable, not a hard requirement), the row is inserted with
+  `status: "needs_review"` instead. A `needs_review` recipe is excluded
+  from pool listings and the food picker until its adder reviews/edits and
+  explicitly publishes it (`PATCH` with `{ status: "published" }`, subject
+  to the same adder-only ownership check as any other edit) — see
+  `api-design.md`.
 
 ## Schema
 
@@ -50,11 +97,29 @@ import { sql } from "drizzle-orm";
 // user, session, account, verification — see better-auth-cloudflare docs.
 // `user.id` is what every table below calls `userId`.
 
+// --- Invites (the access-control gate on top of Google OAuth) ---
+
+export const invites = sqliteTable("invites", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  code: text("code").notNull().unique(), // random token, embedded in the invite URL
+  createdByUserId: text("created_by_user_id").notNull(), // FK -> user.id
+  usedByUserId: text("used_by_user_id"), // FK -> user.id, set once redeemed
+  usedAt: integer("used_at", { mode: "timestamp" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }), // null = no expiry
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+// Single-use per row: `usedByUserId IS NULL` = still redeemable. Any
+// existing member can create one (no admin role in this app) — see
+// api-design.md and stack-decision.md's auth section for the redemption flow.
+
 // --- Recipes ---
 
 export const recipes = sqliteTable("recipes", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   addedByUserId: text("added_by_user_id").notNull(), // FK -> user.id; only this user can edit core fields
+  status: text("status").notNull().default("published"), // "published" | "needs_review"
 
   title: text("title").notNull(),
   description: text("description"),
@@ -69,6 +134,7 @@ export const recipes = sqliteTable("recipes", {
 
   imageR2Key: text("image_r2_key"), // R2 object key, not a full URL
   sourceUrl: text("source_url"),
+  sourceUrlNormalized: text("source_url_normalized"), // dedup key; null for text/photo/PDF sources with no URL
   sourcePlatform: text("source_platform"), // youtube | blog | instagram | tiktok | ... | photo | pdf
   confidenceScore: integer("confidence_score"),
 
@@ -106,9 +172,17 @@ export const cookLogs = sqliteTable("cook_logs", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }), // set on edit; null until first edit
 });
 // "who cooked it how many times" = COUNT(*) GROUP BY recipeId, userId
 // "aggregate rating" = AVG(rating) WHERE rating IS NOT NULL GROUP BY recipeId
+//
+// Edit/delete window: a cook log can be edited or deleted by its own
+// logger only within a short window after creation (default 24h — a
+// plain constant check against `createdAt`, no schema support needed
+// beyond `updatedAt`). After the window, it's permanent, same as recipes.
+// This is an app-layer check (`now - cookLogs.createdAt < EDIT_WINDOW_MS`),
+// not enforced by the database.
 
 // --- Notes (recipe-level, multi-author) ---
 
@@ -165,12 +239,16 @@ export const pushSubscriptions = sqliteTable("push_subscriptions", {
 ## Indexes to add in the migration (not shown inline above)
 
 - `recipes(added_by_user_id)`
+- `recipes(source_url_normalized)` — **unique** (dedup)
+- `recipes(status)` — pool/picker queries filter `status = 'published'`
 - `recipe_tags(recipe_id)`, `recipe_tags(tag_id)`, composite PK on both
 - `cook_logs(recipe_id)`, `cook_logs(user_id)`
 - `recipe_notes(recipe_id)`
 - `notifications(user_id, read_at)` — the in-app feed's main query is "unread
   notifications for this user"
 - `uploads(user_id, status)`
+- `invites(code)` (already unique, but this is the hot lookup during
+  redemption), `invites(created_by_user_id)`
 
 ## Notification fan-out relationship
 

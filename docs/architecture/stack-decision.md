@@ -120,6 +120,20 @@ this after friends are getting logged out constantly.
 **Fallback**: Auth.js (NextAuth) core also runs on edge runtimes and has
 community D1 adapters, if better-auth proves unstable in practice.
 
+**Access control on top of OAuth**: Google OAuth alone authenticates *a*
+Google account, not *the right* Google accounts — this app needs to reject
+sign-in from anyone outside the friend group. Decision: **invite
+link/code**, not a static email allowlist. Mechanism: an `invites` row
+(`data-model.md`) holds a single-use code; any existing member can generate
+one and send the link to a friend. The invite code is captured before the
+Google OAuth redirect (e.g. as a query param on the sign-in page, carried
+through in a short-lived signed cookie/state param) and validated in a
+better-auth `user.create` hook — on redemption, mark the invite row used and
+link it to the new user; if no valid, unused, unexpired invite is present at
+account-creation time, the hook rejects the sign-up. Existing members simply
+log in via Google as normal — the gate only applies to *account creation*,
+not every sign-in.
+
 ### AI / extraction model: Workers AI end-to-end, on a large-enough model
 
 **Decision**: keep AI usage entirely inside Cloudflare — no external LLM

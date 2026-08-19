@@ -8,7 +8,7 @@ new pool additions, and ratings/notes on your recipes.
 | Event | Recipient(s) | Notification `type` |
 |---|---|---|
 | Someone logs a cook (insert into `cook_logs`) on a recipe | The recipe's `addedByUserId` (if not the person who cooked it) | `cook_log` |
-| A new recipe is added to the pool (insert into `recipes`) | Everyone *except* the adder | `new_recipe` |
+| A recipe becomes visible in the pool — insert with `status: "published"`, **or** a `needs_review` recipe transitions to `"published"` (`data-model.md`) | Everyone *except* the adder | `new_recipe` |
 | A rating is attached to a cook log on your recipe | The recipe's `addedByUserId` (if not the rater) | `cook_log` (rating is a field on the same event, not a separate notification type) |
 | A note is added to your recipe | The recipe's `addedByUserId` (if not the note author) | `note` |
 

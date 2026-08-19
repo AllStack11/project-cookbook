@@ -19,6 +19,10 @@ Input (URL | pasted text | uploaded photo | uploaded PDF)
 1. Route by source type
   │
   ▼
+1a. Dedup check (URL sources only): does a recipe with this normalized
+    source URL already exist? If yes, return it — skip everything below.
+  │
+  ▼
 2. Raw content acquisition (per-source strategy — see table below)
   │
   ▼
@@ -33,10 +37,24 @@ Input (URL | pasted text | uploaded photo | uploaded PDF)
 5. LLM structured extraction (raw text → validated Recipe JSON)
   │
   ▼
-6. Validation + confidence scoring (kept from v1, with the isGenerated fix)
+6. Validation + confidence scoring (kept from v1, with the isGenerated fix).
+   Score below the review threshold (default 50) → the recipe will be
+   persisted with `status: "needs_review"` instead of `"published"` — see
+   `data-model.md`. This is a status flag, not a rejection; the row is
+   still created, just not visible in pool listings/the picker until the
+   adder confirms it.
   │
   ▼
-7. Cache + persist + notify (KV cache, D1 write, Queue notification fan-out)
+7. Image fetch: if the recipe has a source image (JSON-LD `image`, YouTube
+   thumbnail, OCR'd photo itself, etc.), download it and store in R2 —
+   recipe images are never hotlinked to the original source (confirmed
+   decision; see `data-model.md`), so the recipe card doesn't break when
+   the source page changes or blocks hotlinking
+  │
+  ▼
+8. Cache + persist + notify (KV cache, D1 write, Queue notification
+   fan-out — skipped/deferred for `needs_review` rows until published,
+   since there's nothing to notify friends about yet)
 ```
 
 ## Per-source acquisition strategy
@@ -114,16 +132,33 @@ Changed from v1:
   revalidation on every hop, byte-capped response reading, domain-boundary
   matching (not substring matching) for platform detection.
 
-## Caching
+## Caching — and how it relates to the new D1 dedup check
 
 Same normalized-URL → SHA-256 cache key scheme as v1
 (`lib/cache/cacheClient.ts`'s `normalizeUrl`/`generateCacheKey` logic is
 platform-aware — YouTube video ID, Instagram post path, etc. — and ports
-directly). Only the backing store changes: Vercel KV → Cloudflare KV. TTLs
-(30-day blog, 7-day social) carry over as reasonable defaults, tunable since
-there's no cost-driven "40-60% hit rate" target anymore — this cache now
-exists for latency and reliability (don't re-hit a flaky source), not
-primarily for spend control.
+directly). Only the backing store changes: Vercel KV → Cloudflare KV.
+
+**This cache's job has narrowed.** In v1, it was the primary cost-saving
+mechanism — every repeat hit on a URL skipped the LLM call. In v2, the D1
+dedup check (`data-model.md` §Recipes, pipeline stage 1a above) is the
+*primary* dedup mechanism for anything that successfully became a recipe,
+because recipes are permanent — once a URL has been extracted once, it has
+a matching D1 row forever, so the KV cache is redundant for that case. What
+KV is still genuinely useful for:
+
+- **Failed/rejected extractions**: a URL that produced "no recipe found" or
+  a hard extraction failure never gets a D1 row, so without a cache, a bad
+  URL gets re-scraped and re-sent to the LLM every time someone (or a retry)
+  hits it. Cache the failure too, with a shorter TTL, so a known-bad URL
+  doesn't keep burning extraction attempts.
+- **The race window**: two people submitting the same brand-new URL within
+  moments of each other, before either has landed in D1 yet.
+
+TTLs (30-day blog, 7-day social) from v1 are reasonable defaults for the
+success case; failure caching should use something much shorter (e.g. an
+hour) since a source that failed once might genuinely work on retry (a
+transient network blip, a temporarily-down site).
 
 ## What gets deleted, not ported
 

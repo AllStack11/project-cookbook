@@ -11,18 +11,32 @@ during implementation against the `data-model.md` shapes.
 ## Auth
 
 Handled by better-auth's own route handler mount (`app/api/auth/[...all]`) —
-Google OAuth flow, session cookie management. Nothing custom to build here
-beyond configuration.
+Google OAuth flow, session cookie management. Account creation is gated by
+an invite code via a better-auth hook, not a custom route — see
+`stack-decision.md`'s auth section.
+
+## Invites
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/invites` | Any authenticated user can generate one (no admin role in this app). Returns the code/link to share. |
+| `GET` | `/api/invites` | List invites *you've* created, with status (unused/used/expired) — lets you see whether a friend has redeemed theirs yet. |
+
+Redemption itself isn't a REST call against this resource — it happens as
+part of the Google OAuth sign-up flow (see `stack-decision.md`).
 
 ## Recipes
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/recipes` | List the shared pool. Supports `?tag=`, `?q=` (search title), pagination. |
-| `GET` | `/api/recipes/:id` | Full recipe detail, including cook-log summary, rating rollup, notes. |
-| `POST` | `/api/recipes` | Create from a URL/text/upload — kicks off the extraction pipeline (`extraction-pipeline.md`). For photo/PDF, this returns immediately with an `uploads` row in `pending` state, not a finished recipe. |
-| `PATCH` | `/api/recipes/:id` | Edit core fields. **403 unless `session.userId === recipe.addedByUserId`** — this check is the entire enforcement of the "only the adder can edit" rule from the requirements; get it right. |
-| `DELETE` | `/api/recipes/:id` | Same ownership check as PATCH. Consider soft-delete if cook-logs/notes reference it — decide during build whether orphaned cook-log history should survive a recipe deletion. |
+| `GET` | `/api/recipes` | List the shared pool. Supports `?tag=`, `?q=` (search title), pagination. **Only `status: "published"` rows** — `needs_review` recipes don't appear here. |
+| `GET` | `/api/recipes/:id` | Full recipe detail, including cook-log summary, rating rollup, notes. Works regardless of `status` — a `needs_review` recipe's adder can still open it directly (e.g. via the link handed back from `POST`) even though it's excluded from the list. |
+| `POST` | `/api/recipes` | Create from a URL/text/upload — kicks off the extraction pipeline (`extraction-pipeline.md`). Three possible outcomes: (1) **dedup hit** — a recipe with this normalized source URL already exists, response returns that existing recipe, nothing new created; (2) **photo/PDF** — returns immediately with an `uploads` row in `pending` state, not a finished recipe; (3) **normal** — returns the new recipe, with `status: "published"` or `"needs_review"` depending on the confidence threshold (`data-model.md`). |
+| `PATCH` | `/api/recipes/:id` | Edit core fields, and/or transition `status: "needs_review"` → `"published"` once the adder is satisfied. **403 unless `session.userId === recipe.addedByUserId`** — this check is the entire enforcement of the "only the adder can edit" rule from the requirements; get it right. Publishing a previously-`needs_review` recipe should trigger the `new_recipe` notification fan-out at that point, not at creation time. |
+
+**No `DELETE /api/recipes/:id`.** Confirmed: recipes are never deleted —
+they stay in the database permanently once added (`data-model.md`). Don't
+build a delete endpoint.
 
 ## Cook log
 
@@ -31,6 +45,8 @@ beyond configuration.
 | `POST` | `/api/recipes/:id/cook-logs` | Log a cook. `{ cookedAt?, rating? }` — both optional per the schema (you can log without rating). Triggers the notification fan-out (`notifications.md`). |
 | `GET` | `/api/recipes/:id/cook-logs` | Full cook history for a recipe (who, when, rating) — this is the "who cooked it how many times" view. |
 | `GET` | `/api/users/:id/cook-logs` | A user's own cook history, for a profile view. |
+| `PATCH` | `/api/cook-logs/:id` | Edit `cookedAt`/`rating`. **403 unless `session.userId === cookLog.userId` AND within the edit window** (default 24h from `createdAt` — `data-model.md`); past the window, 403 regardless of ownership. |
+| `DELETE` | `/api/cook-logs/:id` | Same ownership + time-window check as PATCH. |
 
 ## Notes
 
@@ -38,13 +54,14 @@ beyond configuration.
 |---|---|---|
 | `POST` | `/api/recipes/:id/notes` | Add a note. Any authenticated user, not just the adder. |
 | `GET` | `/api/recipes/:id/notes` | List notes on a recipe. |
-| `DELETE` | `/api/notes/:id` | Only the note's own author (or the recipe owner?) can delete — decide during build; not specified in requirements. |
+| `DELETE` | `/api/notes/:id` | **403 unless `session.userId === note.userId`** — only the note's own author can delete it; the recipe owner has no moderation right over other people's notes. |
 
 ## Tags / food picker
 
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/tags` | All available tags, for filter UI and the picker. |
+| `GET` | `/api/tags?search=` | Prefix/substring match against existing tags, for the "reuse existing tag first" autocomplete when tagging a recipe (`data-model.md`). |
 | `GET` | `/api/picker` | `?tags=italian,weeknight` → returns a filtered/randomized suggestion from the pool. This is the whole "food picker" feature — it's a query against `recipes` joined through `recipe_tags`, not a separate subsystem. |
 
 ## Uploads (photo/PDF)
