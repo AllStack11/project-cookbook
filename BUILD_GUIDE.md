@@ -38,6 +38,14 @@ migration step to design either.
    `stack-decision.md`. If it doesn't work cleanly on the current codebase,
    that's the moment to decide on the Hono/Vite fallback, before more work
    is built on top of the assumption.
+7. Set up deploys via **GitHub Actions running `wrangler deploy`** (not
+   Cloudflare's native Git integration, and not manual deploys) — a
+   workflow that runs `@opennextjs/cloudflare build` then `wrangler
+   deploy` on push to `main`. This gives explicit control over the
+   OpenNext build step rather than trusting Cloudflare's dashboard build
+   to handle it, and keeps deploys consistent with how this repo already
+   uses GitHub (PRs, CI). Needs `CLOUDFLARE_API_TOKEN` (scoped to Workers
+   deploy) and `CLOUDFLARE_ACCOUNT_ID` as repo secrets.
 
 ## Phase 1 — Auth + data foundation
 
