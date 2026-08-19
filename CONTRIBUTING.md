@@ -43,9 +43,12 @@ These need to be set once, by whoever has admin access to the repo:
    "Allow rebase merging," leave only "Allow squash merging" checked. Also
    check **"Automatically delete head branches."**
 2. **Settings → Branches → Add branch protection rule** for `main`: enable
-   "Require a pull request before merging." (Optionally also "Require
-   status checks to pass" once CI exists — see `BUILD_GUIDE.md` Phase 0's
-   GitHub Actions deploy workflow.)
+   "Require a pull request before merging" **and** "Require status checks to
+   pass before merging," with the CI checks from
+   `docs/architecture/testing-strategy.md` (lint, typecheck, unit,
+   worker-integration, extraction-pipeline, E2E) selected as required once
+   that workflow exists (`BUILD_GUIDE.md` Phase 0). Tests are a hard gate,
+   not advisory — a PR can't merge with any of them red.
 
 Until these are set, the convention above is enforced by discipline
 (including by any Claude Code session working in this repo), not by
